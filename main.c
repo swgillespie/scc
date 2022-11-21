@@ -15,17 +15,27 @@ load_file(const char* filename)
     exit(1);
   }
 
-  fseek(f, 0, SEEK_END);
-  source_len = (size_t)ftell(f);
-  fseek(f, 0, SEEK_SET);
-  source = malloc(source_len);
-  if (fread(source, sizeof(char), source_len, f) != source_len) {
-    perror("fread");
-    exit(1);
-  }
-}
+  FILE* stream = open_memstream(&source, &source_len);
+  for (;;) {
+    char read_buf[4096];
+    size_t nbytes = fread(read_buf, 1, sizeof(read_buf), f);
+    if (nbytes == 0) {
+      break;
+    }
 
-// the minimum set of tokens to recognize "int main() { return <number>; }"
+    fwrite(read_buf, 1, nbytes, stream);
+  }
+
+  fclose(f);
+  fflush(stream);
+
+  // Ensure the last line is terminated with a newline, even if it is not.
+  if (source_len == 0 || source[source_len - 1] != '\n') {
+    fputc('\n', stream);
+  }
+  fputc('\0', stream);
+  fclose(stream);
+}
 
 typedef enum
 {
@@ -40,6 +50,8 @@ typedef enum
   TOKEN_RETURN,
   TOKEN_INTEGER,
   TOKEN_SEMICOLON,
+  TOKEN_PLUS,
+  TOKEN_MINUS,
   TOKEN_EOF,
 } token_kind;
 
@@ -99,6 +111,14 @@ tokenize(void)
         cursor->next = make_token(TOKEN_SEMICOLON, c, 1);
         c++;
         break;
+      case '+':
+        cursor->next = make_token(TOKEN_PLUS, c, 1);
+        c++;
+        break;
+      case '-':
+        cursor->next = make_token(TOKEN_MINUS, c, 1);
+        c++;
+        break;
       default:
         if (isalpha(*c)) {
           size_t len = 0;
@@ -116,7 +136,7 @@ tokenize(void)
           }
         } else if (isdigit(*c)) {
           size_t len = 0;
-          int value;
+          int value = 0;
           while (isdigit(*c)) {
             value = value * 10 + *c - '0';
             c++;
@@ -142,11 +162,147 @@ eat(token** cursor, token_kind kind)
 {
   token* tok = *cursor;
   if (tok->kind != kind) {
-    // error?
+    abort();
   }
 
   *cursor = tok->next;
   return tok;
+}
+
+int
+equal(token** cursor, token_kind kind)
+{
+  token* tok = *cursor;
+  if (tok->kind != kind) {
+    return 0;
+  }
+
+  eat(cursor, kind);
+  return 1;
+}
+
+typedef enum node_kind
+{
+  NODE_BINOP,
+  NODE_CONST,
+} node_kind;
+
+typedef enum binop
+{
+  BINOP_ADD,
+  BINOP_SUB,
+} binop;
+
+typedef struct node
+{
+  node_kind kind;
+  union
+  {
+    struct
+    {
+      binop op;
+      struct node* left;
+      struct node* right;
+    } binop;
+    int const_value;
+  } u;
+} node;
+
+node*
+make_node_const(int value)
+{
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_CONST;
+  n->u.const_value = value;
+  return n;
+}
+
+node*
+make_node_binary(binop op, node* left, node* right)
+{
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_BINOP;
+  n->u.binop.op = op;
+  n->u.binop.left = left;
+  n->u.binop.right = right;
+  return n;
+}
+
+static node*
+primary(token**);
+
+/**
+ * expression = primary ("+" expression | "-" expression)*
+ */
+node*
+expr(token** cursor)
+{
+  node* base = primary(cursor);
+  for (;;) {
+    if (equal(cursor, TOKEN_PLUS)) {
+      base = make_node_binary(BINOP_ADD, base, primary(cursor));
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_MINUS)) {
+      base = make_node_binary(BINOP_SUB, base, primary(cursor));
+      continue;
+    }
+
+    return base;
+  }
+}
+
+/**
+ * primary = integer
+ */
+node*
+primary(token** cursor)
+{
+  token* integer = eat(cursor, TOKEN_INTEGER);
+  return make_node_const(integer->value);
+}
+
+/**
+ * Code generation
+ */
+
+void
+push(void)
+{
+  printf("  push %%rax\n");
+}
+
+void
+pop(const char* reg)
+{
+  printf("  pop %%%s\n", reg);
+}
+
+void
+codegen_expr(node* n)
+{
+  if (n->kind == NODE_CONST) {
+    printf("  mov $%d, %%rax\n", n->u.const_value);
+    push();
+    return;
+  }
+
+  if (n->kind == NODE_BINOP) {
+    codegen_expr(n->u.binop.left);
+    codegen_expr(n->u.binop.right);
+    pop("rdi");
+    pop("rax");
+    switch (n->u.binop.op) {
+      case BINOP_ADD:
+        printf("  add %%rdi, %%rax\n");
+        break;
+      case BINOP_SUB:
+        printf("  sub %%rdi, %%rax\n");
+        break;
+    }
+    push();
+  }
 }
 
 int
@@ -166,7 +322,7 @@ main(int argc, char** argv)
   eat(cursor, TOKEN_RPAREN);
   eat(cursor, TOKEN_LBRACE);
   eat(cursor, TOKEN_RETURN);
-  token* intval = eat(cursor, TOKEN_INTEGER);
+  node* n = expr(cursor);
   eat(cursor, TOKEN_SEMICOLON);
   eat(cursor, TOKEN_RBRACE);
   eat(cursor, TOKEN_EOF);
@@ -175,7 +331,8 @@ main(int argc, char** argv)
 
   fprintf(out, ".globl main\n");
   fprintf(out, "main:\n");
-  fprintf(out, "  mov $%d, %%rax\n", intval->value);
+  codegen_expr(n);
+  pop("rax");
   fprintf(out, "  ret\n");
   return 0;
 }

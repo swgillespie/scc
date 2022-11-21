@@ -1,5 +1,5 @@
 CC ?= clang
-CFLAGS := --std=c11 -Wpedantic -Wall -Wextra -g
+CFLAGS := --std=gnu11 -Wpedantic -Wall -Wextra -g
 
 SOURCES := $(shell find . -name "*.c")
 OBJECTS := $(SOURCES:.c=.o)

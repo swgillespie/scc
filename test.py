@@ -36,6 +36,9 @@ def main():
     run_test('int main() { return 0; }', 0)
     run_test('int main() { return 1; }', 1)
     run_test('int main() { return 2; }', 2)
+    run_test('int main() { return 1+1; }', 2)
+    run_test('int main() { return 1+1+2; }', 4)
+    run_test('int main() { return 20-3; }', 17)
     print(f"\n\n{succeeded}/{succeeded + failed} passed")
     sys.exit(0 if failed == 0 else 1)
 
