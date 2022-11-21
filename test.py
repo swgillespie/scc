@@ -30,6 +30,7 @@ def run_test(src: str, expected: int) -> None:
             failed += 1
         else:
             print(".", end="")
+            sys.stdout.flush()
             succeeded += 1
 
 def main():
@@ -43,6 +44,13 @@ def main():
     run_test('int main() { return 1+1*3; }', 4)
     run_test('int main() { return 6/2; }', 3)
     run_test('int main() { return 6%4; }', 2)
+    run_test('int main() { return 1 == 0; }', 0)
+    run_test('int main() { return 1 == 1; }', 1)
+    run_test('int main() { return 3 < 4; }', 1)
+    run_test('int main() { return 3 < 3; }', 0)
+    run_test('int main() { return 3 <= 3; }', 1)
+    run_test('int main() { return 0 != 0; }', 0)
+    run_test('int main() { return 0 != 1; }', 1)
     print(f"\n\n{succeeded}/{succeeded + failed} passed")
     sys.exit(0 if failed == 0 else 1)
 

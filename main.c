@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,6 +56,10 @@ typedef enum
   TOKEN_STAR,
   TOKEN_SLASH,
   TOKEN_PERCENT,
+  TOKEN_DOUBLE_EQ,
+  TOKEN_NOT_EQ,
+  TOKEN_LT,
+  TOKEN_LT_EQ,
   TOKEN_EOF,
 } token_kind;
 
@@ -66,6 +71,27 @@ typedef struct token
   size_t len;
   int value;
 } token;
+
+void
+verror_at(token* tok, const char* fmt, va_list args)
+{
+  (void)tok;
+  fprintf(stderr, "error: ");
+  vfprintf(stderr, fmt, args);
+  fprintf(stderr, "\n");
+  fflush(stderr);
+  exit(1);
+}
+
+void
+error_at(token* tok, const char* fmt, ...)
+{
+  (void)tok;
+  va_list args;
+  va_start(args, fmt);
+  verror_at(tok, fmt, args);
+  va_end(args);
+}
 
 token*
 make_token(token_kind kind, char* pos, size_t len)
@@ -134,6 +160,33 @@ tokenize(void)
         cursor->next = make_token(TOKEN_PERCENT, c, 1);
         c++;
         break;
+      case '=':
+        if (*++c == '=') {
+          cursor->next = make_token(TOKEN_DOUBLE_EQ, c - 1, 2);
+          c++;
+        } else {
+          error_at(cursor, "expected `=`");
+        }
+
+        break;
+      case '!':
+        if (*++c == '=') {
+          cursor->next = make_token(TOKEN_NOT_EQ, c - 1, 2);
+          c++;
+        } else {
+          error_at(cursor, "expected `=`");
+        }
+
+        break;
+      case '<':
+        if (*++c == '=') {
+          cursor->next = make_token(TOKEN_LT_EQ, c - 1, 2);
+          c++;
+        } else {
+          cursor->next = make_token(TOKEN_LT, c, 1);
+        }
+
+        break;
       default:
         if (isalpha(*c)) {
           size_t len = 0;
@@ -177,7 +230,7 @@ eat(token** cursor, token_kind kind)
 {
   token* tok = *cursor;
   if (tok->kind != kind) {
-    abort();
+    error_at(tok, "unexpected token");
   }
 
   *cursor = tok->next;
@@ -209,6 +262,10 @@ typedef enum binop
   BINOP_MUL,
   BINOP_DIV,
   BINOP_MOD,
+  BINOP_EQUAL,
+  BINOP_NOT_EQUAL,
+  BINOP_LT,
+  BINOP_LT_EQUAL,
 } binop;
 
 typedef struct node
@@ -252,11 +309,56 @@ primary(token**);
 static node*
 mul_expr(token**);
 
-/**
- * expression = mul_expr ("+" mul_expr | "-" mul_expr)*
- */
+static node*
+relational_expr(token**);
+
+static node*
+add_expr(token**);
+
 node*
 expr(token** cursor)
+{
+  return relational_expr(cursor);
+}
+
+/**
+ * relational_expr = add_expr ("==" add_expr | "!=" add_expr | ">" add_expr |
+ * "<" add_expr | ">=" add_expr | "<=" add_expr)*
+ */
+node*
+relational_expr(token** cursor)
+{
+  node* base = add_expr(cursor);
+  for (;;) {
+    if (equal(cursor, TOKEN_DOUBLE_EQ)) {
+      base = make_node_binary(BINOP_EQUAL, base, add_expr(cursor));
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_NOT_EQ)) {
+      base = make_node_binary(BINOP_NOT_EQUAL, base, add_expr(cursor));
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_LT)) {
+      base = make_node_binary(BINOP_LT, base, add_expr(cursor));
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_LT_EQ)) {
+      base = make_node_binary(BINOP_LT_EQUAL, base, add_expr(cursor));
+      continue;
+    }
+
+    return base;
+  }
+}
+
+/**
+ * add_expr = mul_expr ("+" mul_expr | "-" mul_expr)*
+ */
+node*
+add_expr(token** cursor)
 {
   node* base = mul_expr(cursor);
   for (;;) {
@@ -339,8 +441,8 @@ codegen_expr(node* n)
   if (n->kind == NODE_BINOP) {
     codegen_expr(n->u.binop.left);
     codegen_expr(n->u.binop.right);
-    pop("rdi");
-    pop("rax");
+    pop("rdi"); // right
+    pop("rax"); // left
     switch (n->u.binop.op) {
       case BINOP_ADD:
         printf("  add %%rdi, %%rax\n");
@@ -364,6 +466,22 @@ codegen_expr(node* n)
         printf("  idiv %%rdi\n");
         push("rdx");
         break;
+      case BINOP_EQUAL:
+      case BINOP_NOT_EQUAL:
+      case BINOP_LT:
+      case BINOP_LT_EQUAL:
+        printf("  cmp %%rdi, %%rax\n");
+        if (n->u.binop.op == BINOP_EQUAL) {
+          printf("  sete %%al\n");
+        } else if (n->u.binop.op == BINOP_NOT_EQUAL) {
+          printf("  setne %%al\n");
+        } else if (n->u.binop.op == BINOP_LT) {
+          printf("  setl %%al\n");
+        } else if (n->u.binop.op == BINOP_LT_EQUAL) {
+          printf("  setle %%al\n");
+        }
+        printf("  movzb %%al, %%rax\n");
+        push("rax");
     }
   }
 }
