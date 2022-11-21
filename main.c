@@ -52,6 +52,7 @@ typedef enum
   TOKEN_SEMICOLON,
   TOKEN_PLUS,
   TOKEN_MINUS,
+  TOKEN_STAR,
   TOKEN_EOF,
 } token_kind;
 
@@ -117,6 +118,10 @@ tokenize(void)
         break;
       case '-':
         cursor->next = make_token(TOKEN_MINUS, c, 1);
+        c++;
+        break;
+      case '*':
+        cursor->next = make_token(TOKEN_STAR, c, 1);
         c++;
         break;
       default:
@@ -191,6 +196,7 @@ typedef enum binop
 {
   BINOP_ADD,
   BINOP_SUB,
+  BINOP_MUL,
 } binop;
 
 typedef struct node
@@ -231,21 +237,41 @@ make_node_binary(binop op, node* left, node* right)
 static node*
 primary(token**);
 
+static node*
+mul_expr(token**);
+
 /**
- * expression = primary ("+" expression | "-" expression)*
+ * expression = mul_expr ("+" mul_expr | "-" mul_expr)*
  */
 node*
 expr(token** cursor)
 {
-  node* base = primary(cursor);
+  node* base = mul_expr(cursor);
   for (;;) {
     if (equal(cursor, TOKEN_PLUS)) {
-      base = make_node_binary(BINOP_ADD, base, primary(cursor));
+      base = make_node_binary(BINOP_ADD, base, mul_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_MINUS)) {
-      base = make_node_binary(BINOP_SUB, base, primary(cursor));
+      base = make_node_binary(BINOP_SUB, base, mul_expr(cursor));
+      continue;
+    }
+
+    return base;
+  }
+}
+
+/**
+ * mul_expr = primary ("*" primary)*
+ */
+node*
+mul_expr(token** cursor)
+{
+  node* base = primary(cursor);
+  for (;;) {
+    if (equal(cursor, TOKEN_STAR)) {
+      base = make_node_binary(BINOP_MUL, base, primary(cursor));
       continue;
     }
 
@@ -299,6 +325,9 @@ codegen_expr(node* n)
         break;
       case BINOP_SUB:
         printf("  sub %%rdi, %%rax\n");
+        break;
+      case BINOP_MUL:
+        printf("  imul %%rdi, %%rax\n");
         break;
     }
     push();
