@@ -53,6 +53,8 @@ typedef enum
   TOKEN_PLUS,
   TOKEN_MINUS,
   TOKEN_STAR,
+  TOKEN_SLASH,
+  TOKEN_PERCENT,
   TOKEN_EOF,
 } token_kind;
 
@@ -122,6 +124,14 @@ tokenize(void)
         break;
       case '*':
         cursor->next = make_token(TOKEN_STAR, c, 1);
+        c++;
+        break;
+      case '/':
+        cursor->next = make_token(TOKEN_SLASH, c, 1);
+        c++;
+        break;
+      case '%':
+        cursor->next = make_token(TOKEN_PERCENT, c, 1);
         c++;
         break;
       default:
@@ -197,6 +207,8 @@ typedef enum binop
   BINOP_ADD,
   BINOP_SUB,
   BINOP_MUL,
+  BINOP_DIV,
+  BINOP_MOD,
 } binop;
 
 typedef struct node
@@ -263,7 +275,7 @@ expr(token** cursor)
 }
 
 /**
- * mul_expr = primary ("*" primary)*
+ * mul_expr = primary ("*" primary | "%" primary | "/" primary)*
  */
 node*
 mul_expr(token** cursor)
@@ -272,6 +284,16 @@ mul_expr(token** cursor)
   for (;;) {
     if (equal(cursor, TOKEN_STAR)) {
       base = make_node_binary(BINOP_MUL, base, primary(cursor));
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_PERCENT)) {
+      base = make_node_binary(BINOP_MOD, base, primary(cursor));
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_SLASH)) {
+      base = make_node_binary(BINOP_DIV, base, primary(cursor));
       continue;
     }
 
@@ -294,9 +316,9 @@ primary(token** cursor)
  */
 
 void
-push(void)
+push(const char* reg)
 {
-  printf("  push %%rax\n");
+  printf("  push %%%s\n", reg);
 }
 
 void
@@ -310,7 +332,7 @@ codegen_expr(node* n)
 {
   if (n->kind == NODE_CONST) {
     printf("  mov $%d, %%rax\n", n->u.const_value);
-    push();
+    push("rax");
     return;
   }
 
@@ -322,15 +344,27 @@ codegen_expr(node* n)
     switch (n->u.binop.op) {
       case BINOP_ADD:
         printf("  add %%rdi, %%rax\n");
+        push("rax");
         break;
       case BINOP_SUB:
         printf("  sub %%rdi, %%rax\n");
+        push("rax");
         break;
       case BINOP_MUL:
         printf("  imul %%rdi, %%rax\n");
+        push("rax");
+        break;
+      case BINOP_DIV:
+        printf("  xor %%rdx, %%rdx\n");
+        printf("  idiv %%rdi\n");
+        push("rax");
+        break;
+      case BINOP_MOD:
+        printf("  xor %%rdx, %%rdx\n");
+        printf("  idiv %%rdi\n");
+        push("rdx");
         break;
     }
-    push();
   }
 }
 
