@@ -2,6 +2,13 @@
 
 int lvalue_context = 0;
 
+static int
+gen_label()
+{
+  static int count = 0;
+  return count++;
+}
+
 static void
 push(const char* reg)
 {
@@ -115,6 +122,20 @@ codegen_stmt(node* n)
         codegen_stmt(stmt);
       }
       break;
+    case NODE_IF: {
+      int label_count = gen_label();
+      codegen_expr(n->u.if_.cond);
+      pop("rax");
+      printf("  cmp $0, %%rax\n");
+      printf("  je .L.else.%d\n", label_count);
+      codegen_stmt(n->u.if_.then);
+      printf("  jmp .L.end.%d\n", label_count);
+      printf(".L.else.%d:\n", label_count);
+      if (n->u.if_.else_) {
+        codegen_stmt(n->u.if_.else_);
+      }
+      printf(".L.end.%d:\n", label_count);
+    }
     default:
       break;
   }
@@ -144,4 +165,6 @@ codegen(node* n)
   for (node* cursor = n; cursor != NULL; cursor = cursor->next) {
     codegen_stmt(cursor);
   }
+  printf("  leave\n");
+  printf("  ret\n");
 }

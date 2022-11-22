@@ -18,6 +18,9 @@ typedef enum
   // Probably not real tokens, these are identifiers?
   TOKEN_INT,
   TOKEN_MAIN,
+  // Reserved words
+  TOKEN_IF,
+  TOKEN_ELSE,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_LPAREN,
@@ -66,6 +69,8 @@ typedef enum node_kind
   NODE_ASSIGN,
   NODE_NOP,
   NODE_SYMBOL_REF,
+  /* Control flow */
+  NODE_IF,
   /* Statements */
   NODE_RETURN,
   NODE_EXPR_STMT,
@@ -107,6 +112,12 @@ typedef struct node
     struct symbol* symbol_ref;
     struct node* expr_stmt_value;
     struct node* compound_stmts;
+    struct
+    {
+      struct node* cond;
+      struct node* then;
+      struct node* else_;
+    } if_;
   } u;
 } node;
 

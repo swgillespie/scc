@@ -142,6 +142,10 @@ tokenize(void)
             cursor->next = make_token(TOKEN_MAIN, c - len, len);
           } else if (strncmp(c - len, "return", 6) == 0) {
             cursor->next = make_token(TOKEN_RETURN, c - len, len);
+          } else if (strncmp(c - len, "if", 2) == 0) {
+            cursor->next = make_token(TOKEN_IF, c - len, len);
+          } else if (strncmp(c - len, "else", 4) == 0) {
+            cursor->next = make_token(TOKEN_ELSE, c - len, len);
           } else {
             cursor->next = make_token(TOKEN_IDENT, c - len, len);
           }

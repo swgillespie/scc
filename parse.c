@@ -85,6 +85,17 @@ make_expr_stmt(node* value)
   return n;
 }
 
+static node*
+make_if_stmt(node* cond, node* then, node* else_)
+{
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_IF;
+  n->u.if_.cond = cond;
+  n->u.if_.then = then;
+  n->u.if_.else_ = else_;
+  return n;
+}
+
 static token*
 eat(token** cursor, token_kind kind)
 {
@@ -143,8 +154,12 @@ declaration(token**);
 static node*
 compound_stmt(token**);
 
+static node*
+if_stmt(token**);
+
 /**
- * stmt = return_stmt | declaration | expr SEMI | compound_statement
+ * stmt = return_stmt | declaration | expr SEMI | compound_statement |
+ * if_statement
  */
 static node*
 stmt(token** cursor)
@@ -159,6 +174,10 @@ stmt(token** cursor)
 
   if (peek(cursor, TOKEN_LBRACE)) {
     return compound_stmt(cursor);
+  }
+
+  if (peek(cursor, TOKEN_IF)) {
+    return if_stmt(cursor);
   }
 
   node* e = expr(cursor);
@@ -216,6 +235,22 @@ compound_stmt(token** cursor)
 
   eat(cursor, TOKEN_RBRACE);
   return head.next;
+}
+
+static node*
+if_stmt(token** cursor)
+{
+  eat(cursor, TOKEN_IF);
+  eat(cursor, TOKEN_LPAREN);
+  node* cond = expr(cursor);
+  eat(cursor, TOKEN_RPAREN);
+  node* then = stmt(cursor);
+  node* else_ = NULL;
+  if (equal(cursor, TOKEN_ELSE)) {
+    else_ = stmt(cursor);
+  }
+
+  return make_if_stmt(cond, then, else_);
 }
 
 /**

@@ -56,6 +56,10 @@ def main():
     run_test('int main() { int x = 0; return x; }', 0)
     run_test('int main() { int x = 1; int y = 2; return x + y; }', 3)
     run_test('int main() {{ int x = 1; int y = 2; return x + y; }}', 3)
+    run_test('int main() { int x = 0; if (0) { x = 1; } else { x = 2; } return x; }', 2)
+    run_test('int main() { int x = 0; if (1) { x = 1; } else { x = 2; } return x; }', 1)
+    run_test('int main() { int x = 0; if (0) { x = 1; } return x; }', 0)
+    run_test('int main() { int x = 0; if (1) { x = 1; } return x; }', 1)
     print(f"\n\n{succeeded}/{succeeded + failed} passed")
     sys.exit(0 if failed == 0 else 1)
 
