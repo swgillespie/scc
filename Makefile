@@ -7,7 +7,7 @@ OBJECTS := $(SOURCES:.c=.o)
 scc: $(OBJECTS)
 	$(CC) $(OBJECTS) -o scc
 
-%.o: %.c
+%.o: %.c scc.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 test: scc
