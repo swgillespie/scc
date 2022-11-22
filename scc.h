@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
 /**
  * tokenize.c - C source tokenizer
  */
@@ -61,8 +63,12 @@ typedef enum node_kind
 {
   NODE_BINOP,
   NODE_CONST,
-  NODE_RETURN,
+  NODE_ASSIGN,
   NODE_NOP,
+  NODE_SYMBOL_REF,
+  /* Statements */
+  NODE_RETURN,
+  NODE_EXPR_STMT,
 } node_kind;
 
 typedef enum binop
@@ -92,6 +98,13 @@ typedef struct node
     } binop;
     int const_value;
     struct node* return_value;
+    struct
+    {
+      struct node* lvalue;
+      struct node* rvalue;
+    } assign;
+    struct symbol* symbol_ref;
+    struct node* expr_stmt_value;
   } u;
 } node;
 
@@ -99,6 +112,7 @@ typedef struct symbol
 {
   struct symbol* next;
   token* name;
+  int frame_offset;
 } symbol;
 
 typedef struct scope
@@ -109,6 +123,11 @@ typedef struct scope
 
 node*
 parse(token** cursor);
+
+char*
+symbol_name(symbol* s);
+
+extern scope* scopes;
 
 /**
  * codegen.c - Turn node trees into code

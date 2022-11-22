@@ -1,5 +1,7 @@
 #include "scc.h"
 
+int lvalue_context = 0;
+
 static void
 push(const char* reg)
 {
@@ -67,6 +69,31 @@ codegen_expr(node* n)
         push("rax");
     }
   }
+
+  if (n->kind == NODE_SYMBOL_REF) {
+    if (lvalue_context) {
+      printf("  lea %d(%%rbp), %%rax # symbol ref lvalue `%s`\n",
+             n->u.symbol_ref->frame_offset,
+             symbol_name(n->u.symbol_ref));
+      push("rax");
+    } else {
+      printf("  movq %d(%%rbp), %%rax # symbol ref `%s`\n",
+             n->u.symbol_ref->frame_offset,
+             symbol_name(n->u.symbol_ref));
+      push("rax");
+    }
+  }
+
+  if (n->kind == NODE_ASSIGN) {
+    codegen_expr(n->u.assign.rvalue);
+    lvalue_context = 1;
+    codegen_expr(n->u.assign.lvalue);
+    lvalue_context = 0;
+    pop("rdi"); // lvalue
+    pop("rax"); // rvalue
+    printf("  movq %%rax, (%%rdi)\n");
+    push("rax");
+  }
 }
 
 void
@@ -76,17 +103,39 @@ codegen_stmt(node* n)
     case NODE_RETURN:
       codegen_expr(n->u.return_value);
       pop("rax");
+      printf("  leave\n");
       printf("  ret\n");
+      break;
+    case NODE_EXPR_STMT:
+      codegen_expr(n->u.expr_stmt_value);
+      printf("  add $8, %%rsp\n");
+      break;
     default:
       break;
   }
 }
 
+int
+calculate_frame_layout()
+{
+  int offset = 0;
+  for (symbol* sym = scopes->symbols; sym; sym = sym->next) {
+    offset -= 8;
+    sym->frame_offset = offset;
+  }
+
+  return -offset;
+}
+
 void
 codegen(node* n)
 {
+  int offset = calculate_frame_layout();
   printf(".globl main\n");
   printf("main:\n");
+  push("rbp");
+  printf("  movq %%rsp, %%rbp\n");
+  printf("  sub $%d, %%rsp\n", offset);
   for (node* cursor = n; cursor != NULL; cursor = cursor->next) {
     codegen_stmt(cursor);
   }
