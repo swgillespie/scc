@@ -145,11 +145,17 @@ mul_expr(token** cursor)
 }
 
 /**
- * primary = integer
+ * primary = integer | "(" expression ")"
  */
 static node*
 primary(token** cursor)
 {
+  if (equal(cursor, TOKEN_LPAREN)) {
+    node* nested = expr(cursor);
+    eat(cursor, TOKEN_RPAREN);
+    return nested;
+  }
+
   token* integer = eat(cursor, TOKEN_INTEGER);
   return make_node_const(integer->value);
 }
