@@ -1,5 +1,24 @@
 #include "scc.h"
 
+static scope* scopes;
+
+static scope*
+make_scope()
+{
+  scope* s = malloc(sizeof(scope));
+  return s;
+}
+
+static symbol*
+make_symbol(token* name)
+{
+  symbol* s = malloc(sizeof(symbol));
+  s->name = name;
+  s->next = scopes->symbols;
+  scopes->symbols = s;
+  return s;
+}
+
 static node*
 make_node_const(int value)
 {
@@ -29,6 +48,14 @@ make_return(node* val)
   return n;
 }
 
+static node*
+make_nop()
+{
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_NOP;
+  return n;
+}
+
 static token*
 eat(token** cursor, token_kind kind)
 {
@@ -39,6 +66,13 @@ eat(token** cursor, token_kind kind)
 
   *cursor = tok->next;
   return tok;
+}
+
+static int
+peek(token** cursor, token_kind kind)
+{
+  token* tok = *cursor;
+  return tok->kind == kind;
 }
 
 static int
@@ -71,15 +105,30 @@ add_expr(token**);
 static node*
 expr(token**);
 
+static node*
+declaration(token**);
+
 /**
- * stmt = return expr
+ * stmt = return_stmt | declaration
  */
 static node*
 stmt(token** cursor)
 {
-  return return_stmt(cursor);
+  if (peek(cursor, TOKEN_RETURN)) {
+    return return_stmt(cursor);
+  }
+
+  if (peek(cursor, TOKEN_INT)) {
+    return declaration(cursor);
+  }
+
+  error_at(*cursor, "unknown start of statement");
+  return NULL;
 }
 
+/**
+ * return_stmt = "return" expr ";"
+ */
 static node*
 return_stmt(token** cursor)
 {
@@ -87,6 +136,28 @@ return_stmt(token** cursor)
   node* val = expr(cursor);
   eat(cursor, TOKEN_SEMICOLON);
   return make_return(val);
+}
+
+/**
+ *  declaration
+ *    : declaration_specifiers declarator ("=" initializer)? ";"
+ *
+ *  declaration_specifiers
+ *    : int
+ *
+ *  declarator
+ *    : IDENTIFIER
+ */
+static node*
+declaration(token** cursor)
+{
+  eat(cursor, TOKEN_INT);
+  token* ident = eat(cursor, TOKEN_IDENT);
+  eat(cursor, TOKEN_EQUAL);
+  expr(cursor);
+  eat(cursor, TOKEN_SEMICOLON);
+  make_symbol(ident);
+  return make_nop();
 }
 
 static node*
@@ -196,6 +267,7 @@ primary(token** cursor)
 node*
 parse(token** cursor)
 {
+  scopes = make_scope();
   eat(cursor, TOKEN_INT);
   eat(cursor, TOKEN_MAIN);
   eat(cursor, TOKEN_LPAREN);

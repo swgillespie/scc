@@ -106,7 +106,7 @@ tokenize(void)
           cursor->next = make_token(TOKEN_DOUBLE_EQ, c - 1, 2);
           c++;
         } else {
-          error_at(cursor, "expected `=`");
+          cursor->next = make_token(TOKEN_EQUAL, c, 1);
         }
 
         break;
@@ -142,6 +142,8 @@ tokenize(void)
             cursor->next = make_token(TOKEN_MAIN, c - len, len);
           } else if (strncmp(c - len, "return", 6) == 0) {
             cursor->next = make_token(TOKEN_RETURN, c - len, len);
+          } else {
+            cursor->next = make_token(TOKEN_IDENT, c - len, len);
           }
         } else if (isdigit(*c)) {
           size_t len = 0;

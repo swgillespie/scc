@@ -17,6 +17,7 @@ typedef enum
   TOKEN_INT,
   TOKEN_MAIN,
   // These are real tokens.
+  TOKEN_IDENT,
   TOKEN_LPAREN,
   TOKEN_RPAREN,
   TOKEN_LBRACE,
@@ -29,6 +30,7 @@ typedef enum
   TOKEN_STAR,
   TOKEN_SLASH,
   TOKEN_PERCENT,
+  TOKEN_EQUAL,
   TOKEN_DOUBLE_EQ,
   TOKEN_NOT_EQ,
   TOKEN_LT,
@@ -60,6 +62,7 @@ typedef enum node_kind
   NODE_BINOP,
   NODE_CONST,
   NODE_RETURN,
+  NODE_NOP,
 } node_kind;
 
 typedef enum binop
@@ -91,6 +94,18 @@ typedef struct node
     struct node* return_value;
   } u;
 } node;
+
+typedef struct symbol
+{
+  struct symbol* next;
+  token* name;
+} symbol;
+
+typedef struct scope
+{
+  struct scope* next;
+  symbol* symbols;
+} scope;
 
 node*
 parse(token** cursor);
