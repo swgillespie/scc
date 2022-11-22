@@ -61,6 +61,8 @@ def main():
     run_test('int main() { int x = 0; if (0) { x = 1; } return x; }', 0)
     run_test('int main() { int x = 0; if (1) { x = 1; } return x; }', 1)
     run_test('int main() { int x; x = 0; return 0; }', 0)
+    run_test('int main() { int x = 0; for (int i = 0; i < 5; i = i + 1) { x = x + 1; } return x; }', 5)
+    run_test('int main() { int x = 0; for (int i = 0; i < 5; i = i + 1) x = x + 1; return x; }', 5)
     print(f"\n\n{succeeded}/{succeeded + failed} passed")
     sys.exit(0 if failed == 0 else 1)
 

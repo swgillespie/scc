@@ -21,6 +21,7 @@ typedef enum
   // Reserved words
   TOKEN_IF,
   TOKEN_ELSE,
+  TOKEN_FOR,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_LPAREN,
@@ -71,6 +72,7 @@ typedef enum node_kind
   NODE_SYMBOL_REF,
   /* Control flow */
   NODE_IF,
+  NODE_FOR,
   /* Statements */
   NODE_RETURN,
   NODE_EXPR_STMT,
@@ -118,6 +120,14 @@ typedef struct node
       struct node* then;
       struct node* else_;
     } if_;
+    struct
+    {
+      /* e.g. for (i = 0; i < 5; i++) */
+      struct node* initializer; /* i = 0 */
+      struct node* cond;        /* i < 5 */
+      struct node* next;        /* i++ */
+      struct node* body;
+    } for_;
   } u;
 } node;
 

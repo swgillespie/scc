@@ -95,6 +95,18 @@ make_if_stmt(node* cond, node* then, node* else_)
   return n;
 }
 
+static node*
+make_for_stmt(node* initializer, node* cond, node* next, node* body)
+{
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_FOR;
+  n->u.for_.initializer = initializer;
+  n->u.for_.cond = cond;
+  n->u.for_.next = next;
+  n->u.for_.body = body;
+  return n;
+}
+
 static token*
 eat(token** cursor, token_kind kind)
 {
@@ -156,9 +168,12 @@ compound_stmt(token**);
 static node*
 if_stmt(token**);
 
+static node*
+for_stmt(token**);
+
 /**
  * stmt = return_stmt | declaration | expr SEMI | compound_statement |
- * if_statement
+ * if_statement | for_statement
  */
 static node*
 stmt(token** cursor)
@@ -179,6 +194,10 @@ stmt(token** cursor)
     return if_stmt(cursor);
   }
 
+  if (peek(cursor, TOKEN_FOR)) {
+    return for_stmt(cursor);
+  }
+
   node* e = expr(cursor);
   eat(cursor, TOKEN_SEMICOLON);
   return make_expr_stmt(e);
@@ -197,8 +216,23 @@ return_stmt(token** cursor)
 }
 
 /**
+ * expr_stmt = expression SEMICOLON | SEMICOLON
+ */
+static node*
+expr_stmt(token** cursor)
+{
+  if (equal(cursor, TOKEN_SEMICOLON)) {
+    return NULL;
+  }
+
+  node* e = expr(cursor);
+  eat(cursor, TOKEN_SEMICOLON);
+  return e;
+}
+
+/**
  *  declaration
- *    : declaration_specifiers declarator ("=" initializer)? ";"
+ *    : declaration_specifiers declarator ("=" initializer) ";"
  *
  *  declaration_specifiers
  *    : int
@@ -259,6 +293,40 @@ if_stmt(token** cursor)
   }
 
   return make_if_stmt(cond, then, else_);
+}
+
+/**
+ * for_statement
+ *   : "for" "(" expr_stmt expr_stmt ")" stmt
+ *   | "for" "(" expr_stmt expr_stmt expr ")" stmt
+ *   | "for" "(" declaration expr_stmt ")" stmt
+ *   | "for" "(" declaration expr_stmt expr ")" stmt
+ *   ;
+ */
+static node*
+for_stmt(token** cursor)
+{
+  eat(cursor, TOKEN_FOR);
+  eat(cursor, TOKEN_LPAREN);
+  node* initializer;
+  // Declarations are technically not statements, but C11 makes an exception
+  // and allows for statements to contain one decl in the initializer stanza.
+  // TODO: this should be any token in the first set of a decl
+  if (peek(cursor, TOKEN_INT)) {
+    initializer = declaration(cursor);
+  } else {
+    initializer = expr_stmt(cursor);
+  }
+
+  node* cond = expr_stmt(cursor);
+  node* next = NULL;
+  if (!peek(cursor, TOKEN_LPAREN)) {
+    next = expr(cursor);
+  }
+
+  eat(cursor, TOKEN_RPAREN);
+  node* body = stmt(cursor);
+  return make_for_stmt(initializer, cond, next, body);
 }
 
 /**

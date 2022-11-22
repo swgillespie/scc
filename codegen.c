@@ -135,7 +135,28 @@ codegen_stmt(node* n)
         codegen_stmt(n->u.if_.else_);
       }
       printf(".L.end.%d:\n", label_count);
+      break;
     }
+    case NODE_FOR: {
+      int label_count = gen_label();
+      codegen_stmt(n->u.for_.initializer);
+      printf(".L.for.header.%d:\n", label_count);
+      if (n->u.for_.cond) {
+        codegen_expr(n->u.for_.cond);
+        pop("rax");
+        printf("  cmp $0, %%rax\n");
+        printf("  je .L.for.end.%d\n", label_count);
+      }
+      codegen_stmt(n->u.for_.body);
+      if (n->u.for_.next) {
+        codegen_expr(n->u.for_.next);
+        printf("  add $8, %%rsp\n");
+      }
+      printf("  jmp .L.for.header.%d\n", label_count);
+      printf(".L.for.end.%d:\n", label_count);
+      break;
+    }
+
     default:
       break;
   }
