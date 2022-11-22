@@ -140,8 +140,11 @@ assignment_expr(token**);
 static node*
 declaration(token**);
 
+static node*
+compound_stmt(token**);
+
 /**
- * stmt = return_stmt | declaration | expr SEMI
+ * stmt = return_stmt | declaration | expr SEMI | compound_statement
  */
 static node*
 stmt(token** cursor)
@@ -152,6 +155,10 @@ stmt(token** cursor)
 
   if (peek(cursor, TOKEN_INT)) {
     return declaration(cursor);
+  }
+
+  if (peek(cursor, TOKEN_LBRACE)) {
+    return compound_stmt(cursor);
   }
 
   node* e = expr(cursor);
@@ -191,6 +198,24 @@ declaration(token** cursor)
   eat(cursor, TOKEN_SEMICOLON);
   symbol* s = make_symbol(ident);
   return make_expr_stmt(make_node_assign(make_symbol_ref(s), initializer));
+}
+
+/**
+ * compound_statement
+ *  : "{" statement* "}"
+ */
+static node*
+compound_stmt(token** cursor)
+{
+  eat(cursor, TOKEN_LBRACE);
+  node head = { 0 };
+  node* stmts = &head;
+  while (!peek(cursor, TOKEN_RBRACE)) {
+    stmts = stmts->next = stmt(cursor);
+  }
+
+  eat(cursor, TOKEN_RBRACE);
+  return head.next;
 }
 
 /**

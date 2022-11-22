@@ -69,6 +69,7 @@ typedef enum node_kind
   /* Statements */
   NODE_RETURN,
   NODE_EXPR_STMT,
+  NODE_COMPOUND_STMT,
 } node_kind;
 
 typedef enum binop
@@ -105,6 +106,7 @@ typedef struct node
     } assign;
     struct symbol* symbol_ref;
     struct node* expr_stmt_value;
+    struct node* compound_stmts;
   } u;
 } node;
 

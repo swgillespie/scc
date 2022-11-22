@@ -110,6 +110,11 @@ codegen_stmt(node* n)
       codegen_expr(n->u.expr_stmt_value);
       printf("  add $8, %%rsp\n");
       break;
+    case NODE_COMPOUND_STMT:
+      for (node* stmt = n->u.compound_stmts; stmt; stmt = stmt->next) {
+        codegen_stmt(stmt);
+      }
+      break;
     default:
       break;
   }
