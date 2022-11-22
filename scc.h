@@ -59,6 +59,7 @@ typedef enum node_kind
 {
   NODE_BINOP,
   NODE_CONST,
+  NODE_RETURN,
 } node_kind;
 
 typedef enum binop
@@ -76,6 +77,7 @@ typedef enum binop
 
 typedef struct node
 {
+  struct node* next;
   node_kind kind;
   union
   {
@@ -86,6 +88,7 @@ typedef struct node
       struct node* right;
     } binop;
     int const_value;
+    struct node* return_value;
   } u;
 } node;
 

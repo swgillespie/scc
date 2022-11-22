@@ -20,6 +20,15 @@ make_node_binary(binop op, node* left, node* right)
   return n;
 }
 
+static node*
+make_return(node* val)
+{
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_RETURN;
+  n->u.return_value = val;
+  return n;
+}
+
 static token*
 eat(token** cursor, token_kind kind)
 {
@@ -45,6 +54,9 @@ equal(token** cursor, token_kind kind)
 }
 
 static node*
+return_stmt(token** cursor);
+
+static node*
 primary(token**);
 
 static node*
@@ -56,7 +68,28 @@ relational_expr(token**);
 static node*
 add_expr(token**);
 
-node*
+static node*
+expr(token**);
+
+/**
+ * stmt = return expr
+ */
+static node*
+stmt(token** cursor)
+{
+  return return_stmt(cursor);
+}
+
+static node*
+return_stmt(token** cursor)
+{
+  eat(cursor, TOKEN_RETURN);
+  node* val = expr(cursor);
+  eat(cursor, TOKEN_SEMICOLON);
+  return make_return(val);
+}
+
+static node*
 expr(token** cursor)
 {
   return relational_expr(cursor);
@@ -168,10 +201,12 @@ parse(token** cursor)
   eat(cursor, TOKEN_LPAREN);
   eat(cursor, TOKEN_RPAREN);
   eat(cursor, TOKEN_LBRACE);
-  eat(cursor, TOKEN_RETURN);
-  node* n = expr(cursor);
-  eat(cursor, TOKEN_SEMICOLON);
+  node head = { 0 };
+  node* n = &head;
+  while ((*cursor)->kind != TOKEN_RBRACE) {
+    n = n->next = stmt(cursor);
+  }
   eat(cursor, TOKEN_RBRACE);
   eat(cursor, TOKEN_EOF);
-  return n;
+  return head.next;
 }

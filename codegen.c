@@ -70,11 +70,24 @@ codegen_expr(node* n)
 }
 
 void
+codegen_stmt(node* n)
+{
+  switch (n->kind) {
+    case NODE_RETURN:
+      codegen_expr(n->u.return_value);
+      pop("rax");
+      printf("  ret\n");
+    default:
+      break;
+  }
+}
+
+void
 codegen(node* n)
 {
   printf(".globl main\n");
   printf("main:\n");
-  codegen_expr(n);
-  pop("rax");
-  printf("  ret\n");
+  for (node* cursor = n; cursor != NULL; cursor = cursor->next) {
+    codegen_stmt(cursor);
+  }
 }
