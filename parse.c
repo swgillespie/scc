@@ -48,7 +48,6 @@ make_return(node* val)
   return n;
 }
 
-/*
 static node*
 make_nop()
 {
@@ -56,7 +55,7 @@ make_nop()
   n->kind = NODE_NOP;
   return n;
 }
-*/
+
 static node*
 make_node_assign(node* lvalue, node* rvalue)
 {
@@ -212,11 +211,20 @@ declaration(token** cursor)
 {
   eat(cursor, TOKEN_INT);
   token* ident = eat(cursor, TOKEN_IDENT);
-  eat(cursor, TOKEN_EQUAL);
-  node* initializer = expr(cursor);
+  if (equal(cursor, TOKEN_EQUAL)) {
+    node* initializer = expr(cursor);
+    eat(cursor, TOKEN_SEMICOLON);
+    symbol* s = make_symbol(ident);
+    return make_expr_stmt(make_node_assign(make_symbol_ref(s), initializer));
+  }
+
+  /**
+   * Declarations are not really statements; without an initializer, they don't
+   * result in any codegen.
+   */
   eat(cursor, TOKEN_SEMICOLON);
-  symbol* s = make_symbol(ident);
-  return make_expr_stmt(make_node_assign(make_symbol_ref(s), initializer));
+  make_symbol(ident);
+  return make_nop();
 }
 
 /**
