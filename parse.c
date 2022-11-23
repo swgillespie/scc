@@ -601,6 +601,25 @@ unary_expr(token** cursor)
     return make_addrof(unop_tok, base);
   }
 
+  if (equal(cursor, TOKEN_SIZEOF)) {
+    /**
+     * One of the many ambiguities in the C grammar lurks here; the meaning of
+     * the argument to sizeof is dependent on the nature of an identifier given
+     * to it.
+     *
+     * For example: sizeof(x) can mean two things:
+     *   1. The size in bytes required to store the type of x, where x is a
+     * value
+     *   2. The size in bytes required to store an instance of x, where x is a
+     * type
+     *
+     * Form 1 doesn't require parens, form 2 does. We only handle form 1 for
+     * now.
+     */
+    node* expr = unary_expr(cursor);
+    return make_node_const(unop_tok, ty_int, expr->ty->size);
+  }
+
   return postfix_expr(cursor);
 }
 

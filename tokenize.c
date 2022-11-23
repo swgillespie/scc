@@ -15,7 +15,7 @@ static keyword keywords[] = {
   { "int", TOKEN_INT, 3 },       { "main", TOKEN_MAIN, 4 },
   { "return", TOKEN_RETURN, 6 }, { "if", TOKEN_IF, 2 },
   { "else", TOKEN_ELSE, 4 },     { "for", TOKEN_FOR, 3 },
-  { "while", TOKEN_WHILE, 5 },
+  { "while", TOKEN_WHILE, 5 },   { "sizeof", TOKEN_SIZEOF, 6 }
 };
 
 void
