@@ -1,7 +1,5 @@
 #include "scc.h"
 
-int lvalue_context = 0;
-
 static int
 gen_label()
 {
@@ -21,6 +19,38 @@ pop(const char* reg)
   printf("  pop %%%s\n", reg);
 }
 
+/**
+ * Given an expression that produces an lvalue, push the address of that lvalue
+ * onto the value stack.
+ */
+void
+codegen_lvalue_addr(node* n)
+{
+  switch (n->kind) {
+    case NODE_SYMBOL_REF:
+      printf("  lea %d(%%rbp), %%rax # symbol ref lvalue `%s`\n",
+             n->u.symbol_ref->frame_offset,
+             symbol_name(n->u.symbol_ref));
+      push("rax");
+      break;
+    default:
+      error_at(NULL, "not an lvalue");
+      break;
+  }
+}
+
+/**
+ * Generates code to evaluate an expression node and push its value onto the top
+ * of the value stack.
+ *
+ * scc's codegen strategy uses the x86 stack as a stack machine. When an
+ * expression term is evaluated, it pushes its value onto the stack;
+ * higher-level expression terms pop their arguments off of the stack and push
+ * results back onto the stack.
+ *
+ * This generates very inefficient code (particularly if a value is calculated
+ * and immediately used, since rax is then pushed and immediately popped)
+ */
 void
 codegen_expr(node* n)
 {
@@ -78,24 +108,15 @@ codegen_expr(node* n)
   }
 
   if (n->kind == NODE_SYMBOL_REF) {
-    if (lvalue_context) {
-      printf("  lea %d(%%rbp), %%rax # symbol ref lvalue `%s`\n",
-             n->u.symbol_ref->frame_offset,
-             symbol_name(n->u.symbol_ref));
-      push("rax");
-    } else {
-      printf("  movq %d(%%rbp), %%rax # symbol ref `%s`\n",
-             n->u.symbol_ref->frame_offset,
-             symbol_name(n->u.symbol_ref));
-      push("rax");
-    }
+    printf("  movq %d(%%rbp), %%rax # symbol ref `%s`\n",
+           n->u.symbol_ref->frame_offset,
+           symbol_name(n->u.symbol_ref));
+    push("rax");
   }
 
   if (n->kind == NODE_ASSIGN) {
     codegen_expr(n->u.assign.rvalue);
-    lvalue_context = 1;
-    codegen_expr(n->u.assign.lvalue);
-    lvalue_context = 0;
+    codegen_lvalue_addr(n->u.assign.lvalue);
     pop("rdi"); // lvalue
     pop("rax"); // rvalue
     printf("  movq %%rax, (%%rdi)\n");
