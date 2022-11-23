@@ -154,7 +154,7 @@ tokenize(void)
       default:
         if (isalpha(*c)) {
           size_t len = 0;
-          while (isalpha(*c)) {
+          while (isalnum(*c) || *c == '_') {
             c++;
             len++;
           }
