@@ -66,6 +66,7 @@ def main():
     run_test('int main() { int x = 0; while (x < 5) x = x + 1; return x; }', 5)
     run_test('int main() { int x = 0; x++; return x; }', 1)
     run_test('int main() { int x = 0; int* y = &x; *y = 5; return x; }', 5)
+    run_test('int main() { int returns_zero = 0; return returns_zero; }', 0)
     print(f"\n\n{succeeded}/{succeeded + failed} passed")
     sys.exit(0 if failed == 0 else 1)
 

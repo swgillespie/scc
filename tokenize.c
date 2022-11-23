@@ -8,12 +8,14 @@ typedef struct keyword
 {
   const char* str;
   token_kind kind;
+  size_t len;
 } keyword;
 
 static keyword keywords[] = {
-  { "int", TOKEN_INT },     { "main", TOKEN_MAIN }, { "return", TOKEN_RETURN },
-  { "if", TOKEN_IF },       { "else", TOKEN_ELSE }, { "for", TOKEN_FOR },
-  { "while", TOKEN_WHILE },
+  { "int", TOKEN_INT, 3 },       { "main", TOKEN_MAIN, 4 },
+  { "return", TOKEN_RETURN, 6 }, { "if", TOKEN_IF, 2 },
+  { "else", TOKEN_ELSE, 4 },     { "for", TOKEN_FOR, 3 },
+  { "while", TOKEN_WHILE, 5 },
 };
 
 void
@@ -161,8 +163,8 @@ tokenize(void)
 
           int was_keyword = 0;
           for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
-            if (strncmp(c - len, keywords[i].str, strlen(keywords[i].str)) ==
-                0) {
+            if (len == keywords[i].len &&
+                strncmp(c - len, keywords[i].str, len) == 0) {
               cursor->next = make_token(keywords[i].kind, c - len, len);
               was_keyword = 1;
             }
