@@ -1,7 +1,7 @@
 CC ?= clang
 CFLAGS := --std=gnu11 -Wpedantic -Wall -Wextra -g
 
-SOURCES := main.c codegen.c parse.c tokenize.c
+SOURCES := main.c codegen.c parse.c tokenize.c type.c
 OBJECTS := $(SOURCES:.c=.o)
 
 scc: $(OBJECTS)

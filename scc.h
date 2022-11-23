@@ -62,6 +62,32 @@ load_file(const char* filename);
 token*
 tokenize(void);
 
+/*
+ * type.c - The representation of C data types
+ */
+
+typedef enum type_kind
+{
+  TYPE_INT,
+  TYPE_POINTER,
+  TYPE_VOID,
+} type_kind;
+
+typedef struct type
+{
+  type_kind kind;
+  struct type* base;
+} type;
+
+extern type* ty_int;
+extern type* ty_void;
+
+type*
+make_pointer_type(type* base);
+
+char*
+type_name(type* ty);
+
 /**
  * parse.c - Parsing C source into node trees
  */
@@ -101,6 +127,7 @@ typedef struct node
 {
   struct node* next;
   node_kind kind;
+  type* ty;
   /* A representative token of this node, for error messages. */
   token* tok;
   union
@@ -144,6 +171,7 @@ typedef struct symbol
 {
   struct symbol* next;
   token* name;
+  type* ty;
   int frame_offset;
 } symbol;
 

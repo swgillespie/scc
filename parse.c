@@ -10,20 +10,22 @@ make_scope()
 }
 
 static symbol*
-make_symbol(token* name)
+make_symbol(token* name, type* ty)
 {
   symbol* s = malloc(sizeof(symbol));
   s->name = name;
   s->next = scopes->symbols;
+  s->ty = ty;
   scopes->symbols = s;
   return s;
 }
 
 static node*
-make_node_const(token* tok, int value)
+make_node_const(token* tok, type* ty, int value)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_CONST;
+  n->ty = ty;
   n->tok = tok;
   n->u.const_value = value;
   return n;
@@ -35,6 +37,9 @@ make_node_binary(token* tok, binop op, node* left, node* right)
   node* n = malloc(sizeof(node));
   n->kind = NODE_BINOP;
   n->tok = tok;
+  // TODO - there are complex promotion rules that inform what the type of
+  // this expression will be
+  n->ty = left->ty;
   n->u.binop.op = op;
   n->u.binop.left = left;
   n->u.binop.right = right;
@@ -46,6 +51,7 @@ make_return(token* tok, node* val)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_RETURN;
+  n->ty = ty_void;
   n->tok = tok;
   n->u.return_value = val;
   return n;
@@ -66,6 +72,7 @@ make_node_assign(token* tok, node* lvalue, node* rvalue)
   node* n = malloc(sizeof(node));
   n->kind = NODE_ASSIGN;
   n->tok = tok;
+  n->ty = rvalue->ty;
   n->u.assign.lvalue = lvalue;
   n->u.assign.rvalue = rvalue;
   return n;
@@ -77,6 +84,7 @@ make_symbol_ref(token* tok, symbol* sym)
   node* n = malloc(sizeof(node));
   n->kind = NODE_SYMBOL_REF;
   n->tok = tok;
+  n->ty = sym->ty;
   n->u.symbol_ref = sym;
   return n;
 }
@@ -87,6 +95,7 @@ make_expr_stmt(token* tok, node* value)
   node* n = malloc(sizeof(node));
   n->kind = NODE_EXPR_STMT;
   n->tok = tok;
+  n->ty = ty_void;
   n->u.expr_stmt_value = value;
   return n;
 }
@@ -97,6 +106,7 @@ make_if_stmt(token* tok, node* cond, node* then, node* else_)
   node* n = malloc(sizeof(node));
   n->kind = NODE_IF;
   n->tok = tok;
+  n->ty = ty_void;
   n->u.if_.cond = cond;
   n->u.if_.then = then;
   n->u.if_.else_ = else_;
@@ -109,6 +119,7 @@ make_for_stmt(token* tok, node* initializer, node* cond, node* next, node* body)
   node* n = malloc(sizeof(node));
   n->kind = NODE_FOR;
   n->tok = tok;
+  n->ty = ty_void;
   n->u.for_.initializer = initializer;
   n->u.for_.cond = cond;
   n->u.for_.next = next;
@@ -122,6 +133,7 @@ make_deref(token* tok, node* base)
   node* n = malloc(sizeof(node));
   n->kind = NODE_DEREF;
   n->tok = tok;
+  n->ty = base->ty->base;
   n->u.deref_value = base;
   return n;
 }
@@ -132,6 +144,7 @@ make_addrof(token* tok, node* base)
   node* n = malloc(sizeof(node));
   n->kind = NODE_ADDROF;
   n->tok = tok;
+  n->ty = make_pointer_type(base->ty);
   n->u.addrof_value = base;
   return n;
 }
@@ -286,16 +299,16 @@ static node*
 declaration(token** cursor)
 {
   eat(cursor, TOKEN_INT);
-  // TODO - for real decls, we'll need to keep track of the type declared here
-  // this is a hack to write a valid c program that uses pointers
-  while (equal(cursor, TOKEN_STAR))
-    ;
+  type* decltype = ty_int;
+  while (equal(cursor, TOKEN_STAR)) {
+    decltype = make_pointer_type(decltype);
+  }
   token* ident = eat(cursor, TOKEN_IDENT);
   token* eq_tok = *cursor;
   if (equal(cursor, TOKEN_EQUAL)) {
     node* initializer = expr(cursor);
     token* semi_tok = eat(cursor, TOKEN_SEMICOLON);
-    symbol* s = make_symbol(ident);
+    symbol* s = make_symbol(ident, decltype);
     return make_expr_stmt(
       semi_tok,
       make_node_assign(eq_tok, make_symbol_ref(ident, s), initializer));
@@ -306,7 +319,7 @@ declaration(token** cursor)
    * result in any codegen.
    */
   eat(cursor, TOKEN_SEMICOLON);
-  make_symbol(ident);
+  make_symbol(ident, decltype);
   return make_nop();
 }
 
@@ -530,7 +543,14 @@ unary_expr(token** cursor)
   token* unop_tok = *cursor;
   if (equal(cursor, TOKEN_STAR)) {
     node* base = unary_expr(cursor);
-    // TODO error if base is not a pointer or is a void pointer
+    if (base->ty->kind != TYPE_POINTER) {
+      error_at(base->tok,
+               "cannot dereference non-pointer type (type is `%s`)",
+               type_name(base->ty));
+    }
+    if (base->ty->base->kind == TYPE_VOID) {
+      error_at(base->tok, "cannot dereference void pointer");
+    }
     return make_deref(unop_tok, base);
   }
 
@@ -565,8 +585,10 @@ postfix_expr(token** cursor)
       return base = make_node_assign(
                candidate,
                base,
-               make_node_binary(
-                 candidate, BINOP_ADD, base, make_node_const(candidate, 1)));
+               make_node_binary(candidate,
+                                BINOP_ADD,
+                                base,
+                                make_node_const(candidate, ty_int, 1)));
     }
 
     return base;
@@ -598,7 +620,7 @@ primary(token** cursor)
   }
 
   token* integer = eat(cursor, TOKEN_INTEGER);
-  return make_node_const(integer, integer->value);
+  return make_node_const(integer, ty_int, integer->value);
 }
 
 node*
