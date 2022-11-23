@@ -1,22 +1,31 @@
 #include "scc.h"
 
-scope* scopes;
+/**
+ * The current function being parsed, if any.
+ */
+static symbol* current_function;
 
-static scope*
-make_scope()
+static symbol*
+make_symbol_local(token* tok, type* ty)
 {
-  scope* s = malloc(sizeof(scope));
+  symbol* s = malloc(sizeof(symbol));
+  s->tok = tok;
+  s->name = strndup(tok->pos, tok->len);
+  s->kind = SYMBOL_LOCAL_VAR;
+  s->ty = ty;
+  s->next = current_function->u.function.locals;
+  current_function->u.function.locals = s;
   return s;
 }
 
 static symbol*
-make_symbol(token* name, type* ty)
+make_symbol_function(token* tok, type* ty)
 {
   symbol* s = malloc(sizeof(symbol));
-  s->name = name;
-  s->next = scopes->symbols;
+  s->tok = tok;
+  s->name = strndup(tok->pos, tok->len);
+  s->kind = SYMBOL_FUNCTION;
   s->ty = ty;
-  scopes->symbols = s;
   return s;
 }
 
@@ -308,7 +317,7 @@ declaration(token** cursor)
   if (equal(cursor, TOKEN_EQUAL)) {
     node* initializer = expr(cursor);
     token* semi_tok = eat(cursor, TOKEN_SEMICOLON);
-    symbol* s = make_symbol(ident, decltype);
+    symbol* s = make_symbol_local(ident, decltype);
     return make_expr_stmt(
       semi_tok,
       make_node_assign(eq_tok, make_symbol_ref(ident, s), initializer));
@@ -319,7 +328,7 @@ declaration(token** cursor)
    * result in any codegen.
    */
   eat(cursor, TOKEN_SEMICOLON);
-  make_symbol(ident, decltype);
+  make_symbol_local(ident, decltype);
   return make_nop();
 }
 
@@ -609,9 +618,9 @@ primary(token** cursor)
 
   if (peek(cursor, TOKEN_IDENT)) {
     token* name = eat(cursor, TOKEN_IDENT);
-    for (symbol* sym = scopes->symbols; sym; sym = sym->next) {
-      if (strncmp(name->pos, sym->name->pos, MIN(name->len, sym->name->len)) ==
-          0) {
+    for (symbol* sym = current_function->u.function.locals; sym;
+         sym = sym->next) {
+      if (strncmp(name->pos, sym->name, name->len) == 0) {
         return make_symbol_ref(name, sym);
       }
     }
@@ -623,12 +632,13 @@ primary(token** cursor)
   return make_node_const(integer, ty_int, integer->value);
 }
 
-node*
+symbol*
 parse(token** cursor)
 {
-  scopes = make_scope();
   eat(cursor, TOKEN_INT);
-  eat(cursor, TOKEN_MAIN);
+  token* main_tok = eat(cursor, TOKEN_MAIN);
+  current_function =
+    make_symbol_function(main_tok, ty_void /* should be a function type */);
   eat(cursor, TOKEN_LPAREN);
   eat(cursor, TOKEN_RPAREN);
   eat(cursor, TOKEN_LBRACE);
@@ -639,14 +649,6 @@ parse(token** cursor)
   }
   eat(cursor, TOKEN_RBRACE);
   eat(cursor, TOKEN_EOF);
-  return head.next;
-}
-
-char*
-symbol_name(symbol* s)
-{
-  char* buf = calloc(s->name->len + 1, 1);
-  strncpy(buf, s->name->pos, s->name->len);
-  buf[s->name->len] = '\0';
-  return buf;
+  current_function->u.function.body = head.next;
+  return current_function;
 }

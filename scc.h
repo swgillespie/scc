@@ -168,34 +168,49 @@ typedef struct node
   } u;
 } node;
 
+typedef enum symbol_kind
+{
+  SYMBOL_LOCAL_VAR,
+  SYMBOL_FUNCTION,
+} symbol_kind;
+
+/**
+ * A symbol, representing an object that has a location in memory.
+ */
 typedef struct symbol
 {
   struct symbol* next;
-  token* name;
+  symbol_kind kind;
+  char* name;
+  token* tok;
   type* ty;
-  int frame_offset;
+  union
+  {
+    /**
+     * For SYMBOL_LOCAL_VAR, the offset from the frame pointer allocated to
+     * this variable.
+     */
+    int frame_offset;
+    /**
+     * For SYMBOL_FUNCTION, the list of locals for this function.
+     */
+    struct
+    {
+      struct symbol* locals;
+      struct node* body;
+    } function;
+  } u;
 } symbol;
 
-typedef struct scope
-{
-  struct scope* next;
-  symbol* symbols;
-} scope;
-
-node*
+symbol*
 parse(token** cursor);
-
-char*
-symbol_name(symbol* s);
-
-extern scope* scopes;
 
 /**
  * codegen.c - Turn node trees into code
  */
 
 void
-codegen(node* n);
+codegen(symbol* sym);
 
 /**
  * Miscellaneous utility routines

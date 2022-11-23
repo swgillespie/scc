@@ -10,6 +10,6 @@ main(int argc, char** argv)
 
   load_file(argv[1]);
   token* tok = tokenize();
-  node* n = parse(&tok);
-  codegen(n);
+  symbol* sym = parse(&tok);
+  codegen(sym);
 }

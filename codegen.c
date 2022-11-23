@@ -32,8 +32,8 @@ codegen_lvalue_addr(node* n)
   switch (n->kind) {
     case NODE_SYMBOL_REF:
       printf("  lea %d(%%rbp), %%rax # symbol ref lvalue `%s`\n",
-             n->u.symbol_ref->frame_offset,
-             symbol_name(n->u.symbol_ref));
+             n->u.symbol_ref->u.frame_offset,
+             n->u.symbol_ref->name);
       push("rax");
       break;
     case NODE_DEREF:
@@ -115,8 +115,8 @@ codegen_expr(node* n)
 
   if (n->kind == NODE_SYMBOL_REF) {
     printf("  movq %d(%%rbp), %%rax # symbol ref `%s`\n",
-           n->u.symbol_ref->frame_offset,
-           symbol_name(n->u.symbol_ref));
+           n->u.symbol_ref->u.frame_offset,
+           n->u.symbol_ref->name);
     push("rax");
   }
 
@@ -203,27 +203,28 @@ codegen_stmt(node* n)
 }
 
 int
-calculate_frame_layout()
+calculate_frame_layout(symbol* func)
 {
   int offset = 0;
-  for (symbol* sym = scopes->symbols; sym; sym = sym->next) {
+  for (symbol* sym = func->u.function.locals; sym; sym = sym->next) {
     offset -= 8;
-    sym->frame_offset = offset;
+    sym->u.frame_offset = offset;
   }
 
   return -offset;
 }
 
 void
-codegen(node* n)
+codegen(symbol* sym)
 {
-  int offset = calculate_frame_layout();
+  int offset = calculate_frame_layout(sym);
   printf(".globl main\n");
   printf("main:\n");
   push("rbp");
   printf("  movq %%rsp, %%rbp\n");
   printf("  sub $%d, %%rsp\n", offset);
-  for (node* cursor = n; cursor != NULL; cursor = cursor->next) {
+  for (node* cursor = sym->u.function.body; cursor != NULL;
+       cursor = cursor->next) {
     codegen_stmt(cursor);
   }
   printf("  leave\n");
