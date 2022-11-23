@@ -4,6 +4,18 @@ static char* source_name;
 static char* source;
 static size_t source_len;
 
+typedef struct keyword
+{
+  const char* str;
+  token_kind kind;
+} keyword;
+
+static keyword keywords[] = {
+  { "int", TOKEN_INT },     { "main", TOKEN_MAIN }, { "return", TOKEN_RETURN },
+  { "if", TOKEN_IF },       { "else", TOKEN_ELSE }, { "for", TOKEN_FOR },
+  { "while", TOKEN_WHILE },
+};
+
 void
 load_file(const char* filename)
 {
@@ -147,21 +159,16 @@ tokenize(void)
             len++;
           }
 
-          if (strncmp(c - len, "int", 3) == 0) {
-            cursor->next = make_token(TOKEN_INT, c - len, len);
-          } else if (strncmp(c - len, "main", 4) == 0) {
-            cursor->next = make_token(TOKEN_MAIN, c - len, len);
-          } else if (strncmp(c - len, "return", 6) == 0) {
-            cursor->next = make_token(TOKEN_RETURN, c - len, len);
-          } else if (strncmp(c - len, "if", 2) == 0) {
-            cursor->next = make_token(TOKEN_IF, c - len, len);
-          } else if (strncmp(c - len, "else", 4) == 0) {
-            cursor->next = make_token(TOKEN_ELSE, c - len, len);
-          } else if (strncmp(c - len, "for", 3) == 0) {
-            cursor->next = make_token(TOKEN_FOR, c - len, len);
-          } else if (strncmp(c - len, "while", 5) == 0) {
-            cursor->next = make_token(TOKEN_WHILE, c - len, len);
-          } else {
+          int was_keyword = 0;
+          for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
+            if (strncmp(c - len, keywords[i].str, strlen(keywords[i].str)) ==
+                0) {
+              cursor->next = make_token(keywords[i].kind, c - len, len);
+              was_keyword = 1;
+            }
+          }
+
+          if (!was_keyword) {
             cursor->next = make_token(TOKEN_IDENT, c - len, len);
           }
         } else if (isdigit(*c)) {
