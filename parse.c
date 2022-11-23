@@ -163,13 +163,14 @@ make_addrof(token* tok, node* base)
 }
 
 static node*
-make_call(token* tok, char* name)
+make_call(token* tok, char* name, node* args)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_CALL;
   n->tok = tok;
   n->ty = ty_int;
-  n->u.call_name = name;
+  n->u.call.name = name;
+  n->u.call.args = args;
   return n;
 }
 
@@ -590,7 +591,7 @@ unary_expr(token** cursor)
 }
 
 /**
- * postfix_expr = primary ("++" | "(" ")")*
+ * postfix_expr = primary ("++" | "(" argument_list ")")*
  */
 static node*
 postfix_expr(token** cursor)
@@ -614,7 +615,16 @@ postfix_expr(token** cursor)
     }
 
     if (equal(cursor, TOKEN_LPAREN)) {
-      eat(cursor, TOKEN_RPAREN);
+      node arg_head = { 0 };
+      node* args = &arg_head;
+
+      if (!equal(cursor, TOKEN_RPAREN)) {
+        args = args->next = assignment_expr(cursor);
+        while (!equal(cursor, TOKEN_RPAREN)) {
+          eat(cursor, TOKEN_COMMA);
+          args = args->next = assignment_expr(cursor);
+        }
+      }
 
       if (base->kind != NODE_SYMBOL_REF) {
         error_at(base->tok, "only calls of bare identifiers are supported");
@@ -629,7 +639,7 @@ postfix_expr(token** cursor)
         name = base->u.symbol_ref->name;
       }
 
-      return make_call(candidate, name);
+      return make_call(candidate, name, arg_head.next);
     }
 
     return base;

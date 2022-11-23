@@ -1,5 +1,7 @@
 #include "scc.h"
 
+static const char* argument_regs[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
+
 static int
 gen_label()
 {
@@ -149,7 +151,23 @@ codegen_expr(node* n)
   }
 
   if (n->kind == NODE_CALL) {
-    printf("  call %s\n", n->u.call_name);
+    int num_args = 0;
+    for (node* arg = n->u.call.args; arg; arg = arg->next) {
+      codegen_expr(arg);
+      num_args++;
+    }
+
+    if (num_args > 6) {
+      error_at(n->tok, "functions with arity > 6 are not supported");
+    }
+
+    // The first use of the SystemV ABI in scc; we pass integer and
+    // pointer-sized arguments through the first six ABI regs.
+    while (num_args > 0) {
+      pop(argument_regs[num_args-- - 1]);
+    }
+
+    printf("  call %s\n", n->u.call.name);
     push("rax");
   }
 }

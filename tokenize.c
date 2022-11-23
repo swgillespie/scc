@@ -153,6 +153,10 @@ tokenize(void)
         cursor->next = make_token(TOKEN_AMPERSAND, c, 1);
         c++;
         break;
+      case ',':
+        cursor->next = make_token(TOKEN_COMMA, c, 1);
+        c++;
+        break;
       default:
         if (isalpha(*c)) {
           size_t len = 0;

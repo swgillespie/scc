@@ -28,6 +28,25 @@ def run_test(src: str, expected: int) -> None:
             returns_zero:
                 mov $0, %rax
                 ret
+
+            .global returns_argument
+            returns_argument:
+                mov %rdi, %rax
+                ret
+
+            .global adds_arguments
+            adds_arguments:
+                lea (%rdi, %rsi), %rax
+                ret
+
+            .global adds_six_args
+            adds_six_args:
+                add %rsi, %rdi
+                add %rdx, %rdi
+                add %rcx, %rdi
+                add %r8, %rdi
+                lea (%rdi, %r9), %rax
+                ret
             """)
             lib_file.flush()
 
@@ -79,6 +98,9 @@ def main():
     run_test('int main() { int x = 0; int* y = &x; *y = 5; return x; }', 5)
     run_test('int main() { int returns_zero = 0; return returns_zero; }', 0)
     run_test('int main() { return returns_zero(); }', 0)
+    run_test('int main() { return returns_argument(5); }', 5)
+    run_test('int main() { return adds_arguments(2, 3); }', 5)
+    run_test('int main() { return adds_six_args(1, 1, 1, 1, 1, 1); }', 6)
     print(f"\n\n{succeeded}/{succeeded + failed} passed")
     sys.exit(0 if failed == 0 else 1)
 

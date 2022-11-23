@@ -45,6 +45,7 @@ typedef enum
   TOKEN_LT,
   TOKEN_LT_EQ,
   TOKEN_AMPERSAND,
+  TOKEN_COMMA,
   TOKEN_EOF,
 } token_kind;
 
@@ -166,7 +167,11 @@ typedef struct node
     } for_;
     struct node* addrof_value;
     struct node* deref_value;
-    char* call_name;
+    struct
+    {
+      char* name;
+      struct node* args;
+    } call;
   } u;
 } node;
 
