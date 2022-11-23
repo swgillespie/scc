@@ -1,0 +1,24 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "scc: make",
+			"command": "make",
+			"problemMatcher": "$gcc",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"type": "shell",
+			"label": "scc: make test",
+			"command": "make test",
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			}
+		}
+	]
+}
