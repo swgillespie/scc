@@ -30,6 +30,8 @@ typedef enum
   TOKEN_RPAREN,
   TOKEN_LBRACE,
   TOKEN_RBRACE,
+  TOKEN_LBRACKET,
+  TOKEN_RBRACKET,
   TOKEN_RETURN,
   TOKEN_INTEGER,
   TOKEN_SEMICOLON,
@@ -73,12 +75,26 @@ typedef enum type_kind
   TYPE_INT,
   TYPE_POINTER,
   TYPE_VOID,
+  TYPE_ARRAY,
 } type_kind;
 
 typedef struct type
 {
   type_kind kind;
+  /**
+   * The "base type" of this type - for arrays and pointers, it's the content
+   * type of the array and dereferenced pointer type respectively.
+   */
   struct type* base;
+  /**
+   * If TYPE_ARRAY, the length of the array.
+   */
+  int array_length;
+
+  /**
+   * The size of this type, e.g. what sizeof returns.
+   */
+  int size;
 } type;
 
 extern type* ty_int;
@@ -86,6 +102,9 @@ extern type* ty_void;
 
 type*
 make_pointer_type(type* base);
+
+type*
+make_array_type(type* base, int len);
 
 char*
 type_name(type* ty);

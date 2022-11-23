@@ -93,6 +93,14 @@ tokenize(void)
         cursor->next = make_token(TOKEN_RBRACE, c, 1);
         c++;
         break;
+      case '[':
+        cursor->next = make_token(TOKEN_LBRACKET, c, 1);
+        c++;
+        break;
+      case ']':
+        cursor->next = make_token(TOKEN_RBRACKET, c, 1);
+        c++;
+        break;
       case ';':
         cursor->next = make_token(TOKEN_SEMICOLON, c, 1);
         c++;

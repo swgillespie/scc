@@ -101,6 +101,7 @@ def main():
     run_test('int main() { return returns_argument(5); }', 5)
     run_test('int main() { return adds_arguments(2, 3); }', 5)
     run_test('int main() { return adds_six_args(1, 1, 1, 1, 1, 1); }', 6)
+    run_test('int main() { int x[5]; return 0; }', 0)
     print(f"\n\n{succeeded}/{succeeded + failed} passed")
     sys.exit(0 if failed == 0 else 1)
 

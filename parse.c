@@ -317,8 +317,8 @@ expr_stmt(token** cursor)
  *  declaration_specifiers
  *    : int
  *
- *  declarator
- *    : IDENTIFIER
+ *  direct_declarator
+ *    : IDENTIFIER ( "[" assignment_expr? "]")*
  */
 static node*
 declaration(token** cursor)
@@ -328,7 +328,21 @@ declaration(token** cursor)
   while (equal(cursor, TOKEN_STAR)) {
     decltype = make_pointer_type(decltype);
   }
+
   token* ident = eat(cursor, TOKEN_IDENT);
+  if (equal(cursor, TOKEN_LBRACKET)) {
+    // C is ridiculously permissive with what it accepts as an array length
+    // initializer. We'll start with known constants.
+    node* array_length = assignment_expr(cursor);
+    if (array_length->kind != NODE_CONST) {
+      error_at(array_length->tok,
+               "non-literal nonsense not supported in arrays yet");
+    }
+
+    decltype = make_array_type(decltype, array_length->u.const_value);
+    eat(cursor, TOKEN_RBRACKET);
+  }
+
   token* eq_tok = *cursor;
   if (equal(cursor, TOKEN_EQUAL)) {
     node* initializer = expr(cursor);

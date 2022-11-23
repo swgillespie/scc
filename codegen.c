@@ -124,6 +124,16 @@ codegen_expr(node* n)
       error_at(n->tok, "unbound identifier");
     }
 
+    if (n->ty->kind == TYPE_ARRAY) {
+      /**
+       * In C, arrays "decay" to pointers. The identifier reference of an array
+       * evaluates to a pointer to the array's first element.
+       */
+      printf("  lea %d(%%rbp), %%rax # array symbol ref `%s`\n",
+             n->u.symbol_ref->u.frame_offset,
+             n->u.symbol_ref->name);
+    }
+
     printf("  movq %d(%%rbp), %%rax # symbol ref `%s`\n",
            n->u.symbol_ref->u.frame_offset,
            n->u.symbol_ref->name);
@@ -238,7 +248,7 @@ calculate_frame_layout(symbol* func)
 {
   int offset = 0;
   for (symbol* sym = func->u.function.locals; sym; sym = sym->next) {
-    offset -= 8;
+    offset -= sym->ty->size;
     sym->u.frame_offset = offset;
   }
 
