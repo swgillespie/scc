@@ -101,6 +101,8 @@ typedef struct node
 {
   struct node* next;
   node_kind kind;
+  /* A representative token of this node, for error messages. */
+  token* tok;
   union
   {
     struct

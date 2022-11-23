@@ -20,19 +20,21 @@ make_symbol(token* name)
 }
 
 static node*
-make_node_const(int value)
+make_node_const(token* tok, int value)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_CONST;
+  n->tok = tok;
   n->u.const_value = value;
   return n;
 }
 
 static node*
-make_node_binary(binop op, node* left, node* right)
+make_node_binary(token* tok, binop op, node* left, node* right)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_BINOP;
+  n->tok = tok;
   n->u.binop.op = op;
   n->u.binop.left = left;
   n->u.binop.right = right;
@@ -40,14 +42,16 @@ make_node_binary(binop op, node* left, node* right)
 }
 
 static node*
-make_return(node* val)
+make_return(token* tok, node* val)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_RETURN;
+  n->tok = tok;
   n->u.return_value = val;
   return n;
 }
 
+// this sucks, we probably don't need it
 static node*
 make_nop()
 {
@@ -57,38 +61,42 @@ make_nop()
 }
 
 static node*
-make_node_assign(node* lvalue, node* rvalue)
+make_node_assign(token* tok, node* lvalue, node* rvalue)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_ASSIGN;
+  n->tok = tok;
   n->u.assign.lvalue = lvalue;
   n->u.assign.rvalue = rvalue;
   return n;
 }
 
 static node*
-make_symbol_ref(symbol* sym)
+make_symbol_ref(token* tok, symbol* sym)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_SYMBOL_REF;
+  n->tok = tok;
   n->u.symbol_ref = sym;
   return n;
 }
 
 static node*
-make_expr_stmt(node* value)
+make_expr_stmt(token* tok, node* value)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_EXPR_STMT;
+  n->tok = tok;
   n->u.expr_stmt_value = value;
   return n;
 }
 
 static node*
-make_if_stmt(node* cond, node* then, node* else_)
+make_if_stmt(token* tok, node* cond, node* then, node* else_)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_IF;
+  n->tok = tok;
   n->u.if_.cond = cond;
   n->u.if_.then = then;
   n->u.if_.else_ = else_;
@@ -96,10 +104,11 @@ make_if_stmt(node* cond, node* then, node* else_)
 }
 
 static node*
-make_for_stmt(node* initializer, node* cond, node* next, node* body)
+make_for_stmt(token* tok, node* initializer, node* cond, node* next, node* body)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_FOR;
+  n->tok = tok;
   n->u.for_.initializer = initializer;
   n->u.for_.cond = cond;
   n->u.for_.next = next;
@@ -108,19 +117,21 @@ make_for_stmt(node* initializer, node* cond, node* next, node* body)
 }
 
 static node*
-make_deref(node* base)
+make_deref(token* tok, node* base)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_DEREF;
+  n->tok = tok;
   n->u.deref_value = base;
   return n;
 }
 
 static node*
-make_addrof(node* base)
+make_addrof(token* tok, node* base)
 {
   node* n = malloc(sizeof(node));
   n->kind = NODE_ADDROF;
+  n->tok = tok;
   n->u.addrof_value = base;
   return n;
 }
@@ -230,8 +241,8 @@ stmt(token** cursor)
   }
 
   node* e = expr(cursor);
-  eat(cursor, TOKEN_SEMICOLON);
-  return make_expr_stmt(e);
+  token* semi_tok = eat(cursor, TOKEN_SEMICOLON);
+  return make_expr_stmt(semi_tok, e);
 }
 
 /**
@@ -240,10 +251,10 @@ stmt(token** cursor)
 static node*
 return_stmt(token** cursor)
 {
-  eat(cursor, TOKEN_RETURN);
+  token* ret_tok = eat(cursor, TOKEN_RETURN);
   node* val = expr(cursor);
   eat(cursor, TOKEN_SEMICOLON);
-  return make_return(val);
+  return make_return(ret_tok, val);
 }
 
 /**
@@ -280,11 +291,14 @@ declaration(token** cursor)
   while (equal(cursor, TOKEN_STAR))
     ;
   token* ident = eat(cursor, TOKEN_IDENT);
+  token* eq_tok = *cursor;
   if (equal(cursor, TOKEN_EQUAL)) {
     node* initializer = expr(cursor);
-    eat(cursor, TOKEN_SEMICOLON);
+    token* semi_tok = eat(cursor, TOKEN_SEMICOLON);
     symbol* s = make_symbol(ident);
-    return make_expr_stmt(make_node_assign(make_symbol_ref(s), initializer));
+    return make_expr_stmt(
+      semi_tok,
+      make_node_assign(eq_tok, make_symbol_ref(ident, s), initializer));
   }
 
   /**
@@ -317,7 +331,7 @@ compound_stmt(token** cursor)
 static node*
 if_stmt(token** cursor)
 {
-  eat(cursor, TOKEN_IF);
+  token* if_tok = eat(cursor, TOKEN_IF);
   eat(cursor, TOKEN_LPAREN);
   node* cond = expr(cursor);
   eat(cursor, TOKEN_RPAREN);
@@ -327,7 +341,7 @@ if_stmt(token** cursor)
     else_ = stmt(cursor);
   }
 
-  return make_if_stmt(cond, then, else_);
+  return make_if_stmt(if_tok, cond, then, else_);
 }
 
 /**
@@ -341,7 +355,7 @@ if_stmt(token** cursor)
 static node*
 for_stmt(token** cursor)
 {
-  eat(cursor, TOKEN_FOR);
+  token* for_tok = eat(cursor, TOKEN_FOR);
   eat(cursor, TOKEN_LPAREN);
   node* initializer;
   // Declarations are technically not statements, but C11 makes an exception
@@ -361,7 +375,7 @@ for_stmt(token** cursor)
 
   eat(cursor, TOKEN_RPAREN);
   node* body = stmt(cursor);
-  return make_for_stmt(initializer, cond, next, body);
+  return make_for_stmt(for_tok, initializer, cond, next, body);
 }
 
 /**
@@ -371,12 +385,12 @@ for_stmt(token** cursor)
 static node*
 while_stmt(token** cursor)
 {
-  eat(cursor, TOKEN_WHILE);
+  token* while_tok = eat(cursor, TOKEN_WHILE);
   eat(cursor, TOKEN_LPAREN);
   node* cond = expr(cursor);
   eat(cursor, TOKEN_RPAREN);
   node* body = stmt(cursor);
-  return make_for_stmt(NULL, cond, NULL, body);
+  return make_for_stmt(while_tok, NULL, cond, NULL, body);
 }
 
 /**
@@ -400,8 +414,9 @@ assignment_expr(token** cursor)
   // TODO - enforce that this expression produces an lvalue
   node* base = relational_expr(cursor);
   for (;;) {
+    token* eq_tok = *cursor;
     if (equal(cursor, TOKEN_EQUAL)) {
-      base = make_node_assign(base, assignment_expr(cursor));
+      base = make_node_assign(eq_tok, base, assignment_expr(cursor));
       continue;
     }
 
@@ -418,23 +433,24 @@ relational_expr(token** cursor)
 {
   node* base = add_expr(cursor);
   for (;;) {
+    token* op_tok = *cursor;
     if (equal(cursor, TOKEN_DOUBLE_EQ)) {
-      base = make_node_binary(BINOP_EQUAL, base, add_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_EQUAL, base, add_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_NOT_EQ)) {
-      base = make_node_binary(BINOP_NOT_EQUAL, base, add_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_NOT_EQUAL, base, add_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_LT)) {
-      base = make_node_binary(BINOP_LT, base, add_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_LT, base, add_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_LT_EQ)) {
-      base = make_node_binary(BINOP_LT_EQUAL, base, add_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_LT_EQUAL, base, add_expr(cursor));
       continue;
     }
 
@@ -450,13 +466,14 @@ add_expr(token** cursor)
 {
   node* base = mul_expr(cursor);
   for (;;) {
+    token* op_tok = *cursor;
     if (equal(cursor, TOKEN_PLUS)) {
-      base = make_node_binary(BINOP_ADD, base, mul_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_ADD, base, mul_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_MINUS)) {
-      base = make_node_binary(BINOP_SUB, base, mul_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_SUB, base, mul_expr(cursor));
       continue;
     }
 
@@ -472,18 +489,19 @@ mul_expr(token** cursor)
 {
   node* base = unary_expr(cursor);
   for (;;) {
+    token* op_tok = *cursor;
     if (equal(cursor, TOKEN_STAR)) {
-      base = make_node_binary(BINOP_MUL, base, postfix_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_MUL, base, postfix_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_PERCENT)) {
-      base = make_node_binary(BINOP_MOD, base, postfix_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_MOD, base, postfix_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_SLASH)) {
-      base = make_node_binary(BINOP_DIV, base, postfix_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_DIV, base, postfix_expr(cursor));
       continue;
     }
 
@@ -509,10 +527,11 @@ is_lvalue(node* n)
 static node*
 unary_expr(token** cursor)
 {
+  token* unop_tok = *cursor;
   if (equal(cursor, TOKEN_STAR)) {
     node* base = unary_expr(cursor);
     // TODO error if base is not a pointer or is a void pointer
-    return make_deref(base);
+    return make_deref(unop_tok, base);
   }
 
   if (equal(cursor, TOKEN_AMPERSAND)) {
@@ -520,7 +539,7 @@ unary_expr(token** cursor)
     if (!is_lvalue(base)) {
       error_at(*cursor, "not an lvalue");
     }
-    return make_addrof(base);
+    return make_addrof(unop_tok, base);
   }
 
   return postfix_expr(cursor);
@@ -534,6 +553,7 @@ postfix_expr(token** cursor)
 {
   node* base = primary(cursor);
   for (;;) {
+    token* candidate = *cursor;
     if (equal(cursor, TOKEN_PLUS_PLUS)) {
       // Post-increment is only legal on lvalues
       if (!is_lvalue(base)) {
@@ -543,7 +563,10 @@ postfix_expr(token** cursor)
       // rough desugar into "base = base + 1", where lhs base is evaluated
       // in an lvalue context and rhs base in a rvalue context
       return base = make_node_assign(
-               base, make_node_binary(BINOP_ADD, base, make_node_const(1)));
+               candidate,
+               base,
+               make_node_binary(
+                 candidate, BINOP_ADD, base, make_node_const(candidate, 1)));
     }
 
     return base;
@@ -567,7 +590,7 @@ primary(token** cursor)
     for (symbol* sym = scopes->symbols; sym; sym = sym->next) {
       if (strncmp(name->pos, sym->name->pos, MIN(name->len, sym->name->len)) ==
           0) {
-        return make_symbol_ref(sym);
+        return make_symbol_ref(name, sym);
       }
     }
 
@@ -575,7 +598,7 @@ primary(token** cursor)
   }
 
   token* integer = eat(cursor, TOKEN_INTEGER);
-  return make_node_const(integer->value);
+  return make_node_const(integer, integer->value);
 }
 
 node*
