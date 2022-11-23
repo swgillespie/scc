@@ -15,15 +15,26 @@ def run_test(src: str, expected: int) -> None:
     with TemporaryDirectory() as tempdir:
         input_c = join(tempdir, 'input.c')
         input_s = join(tempdir, 'input.s')
+        lib_s = join(tempdir, 'lib.s')
         input = join(tempdir, 'input')
 
         with open(input_c, 'w') as input_file:
             input_file.write(src)
             input_file.flush()
 
+        with open(lib_s, 'w') as lib_file:
+            lib_file.write("""
+            .global returns_zero
+            returns_zero:
+                mov $0, %rax
+                ret
+            """)
+            lib_file.flush()
+
+
         with open(input_s, 'w') as output:
-            subprocess.check_call(["./scc", input_c], stdout=output)
-        subprocess.check_call(["cc", "-static", "-o", input, input_s])
+            subprocess.check_call(["./scc", input_c], stdout=output, stderr=subprocess.DEVNULL)
+        subprocess.check_call(["cc", "-static", "-o", input, input_s, lib_s])
         result = subprocess.call([input])
         if result != expected:
             print(f"\n{src}\n\nExpected {expected}, got {result}")
@@ -67,6 +78,7 @@ def main():
     run_test('int main() { int x = 0; x++; return x; }', 1)
     run_test('int main() { int x = 0; int* y = &x; *y = 5; return x; }', 5)
     run_test('int main() { int returns_zero = 0; return returns_zero; }', 0)
+    run_test('int main() { return returns_zero(); }', 0)
     print(f"\n\n{succeeded}/{succeeded + failed} passed")
     sys.exit(0 if failed == 0 else 1)
 

@@ -31,6 +31,10 @@ codegen_lvalue_addr(node* n)
 {
   switch (n->kind) {
     case NODE_SYMBOL_REF:
+      if (!n->u.symbol_ref) {
+        error_at(n->tok, "unbound identifier");
+      }
+
       printf("  lea %d(%%rbp), %%rax # symbol ref lvalue `%s`\n",
              n->u.symbol_ref->u.frame_offset,
              n->u.symbol_ref->name);
@@ -114,6 +118,10 @@ codegen_expr(node* n)
   }
 
   if (n->kind == NODE_SYMBOL_REF) {
+    if (!n->u.symbol_ref) {
+      error_at(n->tok, "unbound identifier");
+    }
+
     printf("  movq %d(%%rbp), %%rax # symbol ref `%s`\n",
            n->u.symbol_ref->u.frame_offset,
            n->u.symbol_ref->name);
@@ -137,6 +145,11 @@ codegen_expr(node* n)
     codegen_expr(n->u.deref_value);
     pop("rax");
     printf("  movq (%%rax), %%rax\n");
+    push("rax");
+  }
+
+  if (n->kind == NODE_CALL) {
+    printf("  call %s\n", n->u.call_name);
     push("rax");
   }
 }

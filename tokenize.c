@@ -199,7 +199,7 @@ tokenize(void)
 }
 
 void
-verror_at(token* tok, const char* fmt, va_list args)
+vdiagnostic_at(token* tok, const char* prefix, const char* fmt, va_list args)
 {
   // Two things we want to accomplish here, for the sake of the error message
   // we're about to emit:
@@ -238,21 +238,29 @@ verror_at(token* tok, const char* fmt, va_list args)
   size_t len = c - line_start;
   char* line_text = strndup(line_start, len);
 
-  fprintf(stderr, "%s:%d:%d: error: ", source_name, line, col);
+  fprintf(stderr, "%s:%d:%d: %s: ", source_name, line, col, prefix);
   vfprintf(stderr, fmt, args);
   fprintf(stderr, "\n");
   fprintf(stderr, "%5d | %s\n", line, line_text);
   fprintf(stderr, "      |%*s^\n", col, " ");
   fflush(stderr);
-  exit(1);
 }
 
 void
 error_at(token* tok, const char* fmt, ...)
 {
-  (void)tok;
   va_list args;
   va_start(args, fmt);
-  verror_at(tok, fmt, args);
+  vdiagnostic_at(tok, "error", fmt, args);
+  va_end(args);
+  exit(1);
+}
+
+void
+warn_at(token* tok, const char* fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+  vdiagnostic_at(tok, "warning", fmt, args);
   va_end(args);
 }

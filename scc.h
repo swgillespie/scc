@@ -102,6 +102,7 @@ typedef enum node_kind
   NODE_SYMBOL_REF,
   NODE_ADDROF,
   NODE_DEREF,
+  NODE_CALL,
   /* Control flow */
   NODE_IF,
   NODE_FOR,
@@ -165,6 +166,7 @@ typedef struct node
     } for_;
     struct node* addrof_value;
     struct node* deref_value;
+    char* call_name;
   } u;
 } node;
 
@@ -217,5 +219,8 @@ codegen(symbol* sym);
  */
 void
 error_at(token* tok, const char* fmt, ...);
+
+void
+warn_at(token* tok, const char* fmt, ...);
 
 #endif /* __SCC_H__ */

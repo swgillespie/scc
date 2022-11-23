@@ -93,7 +93,11 @@ make_symbol_ref(token* tok, symbol* sym)
   node* n = malloc(sizeof(node));
   n->kind = NODE_SYMBOL_REF;
   n->tok = tok;
-  n->ty = sym->ty;
+  if (sym) {
+    n->ty = sym->ty;
+  } else {
+    n->ty = ty_int;
+  }
   n->u.symbol_ref = sym;
   return n;
 }
@@ -155,6 +159,17 @@ make_addrof(token* tok, node* base)
   n->tok = tok;
   n->ty = make_pointer_type(base->ty);
   n->u.addrof_value = base;
+  return n;
+}
+
+static node*
+make_call(token* tok, char* name)
+{
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_CALL;
+  n->tok = tok;
+  n->ty = ty_int;
+  n->u.call_name = name;
   return n;
 }
 
@@ -575,7 +590,7 @@ unary_expr(token** cursor)
 }
 
 /**
- * postfix_expr = primary ("++")*
+ * postfix_expr = primary ("++" | "(" ")")*
  */
 static node*
 postfix_expr(token** cursor)
@@ -591,13 +606,30 @@ postfix_expr(token** cursor)
 
       // rough desugar into "base = base + 1", where lhs base is evaluated
       // in an lvalue context and rhs base in a rvalue context
-      return base = make_node_assign(
-               candidate,
-               base,
-               make_node_binary(candidate,
-                                BINOP_ADD,
-                                base,
-                                make_node_const(candidate, ty_int, 1)));
+      return make_node_assign(
+        candidate,
+        base,
+        make_node_binary(
+          candidate, BINOP_ADD, base, make_node_const(candidate, ty_int, 1)));
+    }
+
+    if (equal(cursor, TOKEN_LPAREN)) {
+      eat(cursor, TOKEN_RPAREN);
+
+      if (base->kind != NODE_SYMBOL_REF) {
+        error_at(base->tok, "only calls of bare identifiers are supported");
+      }
+
+      char* name;
+      if (!base->u.symbol_ref) {
+        /* it's clowny as hell that this is only a warning, that's C for you */
+        name = strndup(base->tok->pos, base->tok->len);
+        warn_at(base->tok, "implicit declaration of function `%s`", name);
+      } else {
+        name = base->u.symbol_ref->name;
+      }
+
+      return make_call(candidate, name);
     }
 
     return base;
@@ -625,7 +657,13 @@ primary(token** cursor)
       }
     }
 
-    error_at(name, "unknown identifier");
+    /* you would expect that we'd emit an error here if an identifier isn't
+     * found; however, calls to unbound identifiers are completely legal in C.
+     *
+     * we rely on the code generator to emit an error if it requires this
+     * identifier to actually be bound.
+     */
+    return make_symbol_ref(name, NULL);
   }
 
   token* integer = eat(cursor, TOKEN_INTEGER);
