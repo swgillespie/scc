@@ -148,6 +148,8 @@ tokenize(void)
             cursor->next = make_token(TOKEN_ELSE, c - len, len);
           } else if (strncmp(c - len, "for", 3) == 0) {
             cursor->next = make_token(TOKEN_FOR, c - len, len);
+          } else if (strncmp(c - len, "while", 5) == 0) {
+            cursor->next = make_token(TOKEN_WHILE, c - len, len);
           } else {
             cursor->next = make_token(TOKEN_IDENT, c - len, len);
           }

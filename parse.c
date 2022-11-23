@@ -171,9 +171,12 @@ if_stmt(token**);
 static node*
 for_stmt(token**);
 
+static node*
+while_stmt(token**);
+
 /**
  * stmt = return_stmt | declaration | expr SEMI | compound_statement |
- * if_statement | for_statement
+ * if_statement | for_statement | while_statement
  */
 static node*
 stmt(token** cursor)
@@ -196,6 +199,10 @@ stmt(token** cursor)
 
   if (peek(cursor, TOKEN_FOR)) {
     return for_stmt(cursor);
+  }
+
+  if (peek(cursor, TOKEN_WHILE)) {
+    return while_stmt(cursor);
   }
 
   node* e = expr(cursor);
@@ -327,6 +334,21 @@ for_stmt(token** cursor)
   eat(cursor, TOKEN_RPAREN);
   node* body = stmt(cursor);
   return make_for_stmt(initializer, cond, next, body);
+}
+
+/**
+ * while_stmt
+ *  : "while" "(" expr ")" statement
+ */
+static node*
+while_stmt(token** cursor)
+{
+  eat(cursor, TOKEN_WHILE);
+  eat(cursor, TOKEN_LPAREN);
+  node* cond = expr(cursor);
+  eat(cursor, TOKEN_RPAREN);
+  node* body = stmt(cursor);
+  return make_for_stmt(NULL, cond, NULL, body);
 }
 
 /**

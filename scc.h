@@ -22,6 +22,7 @@ typedef enum
   TOKEN_IF,
   TOKEN_ELSE,
   TOKEN_FOR,
+  TOKEN_WHILE,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_LPAREN,

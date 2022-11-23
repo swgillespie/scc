@@ -139,7 +139,9 @@ codegen_stmt(node* n)
     }
     case NODE_FOR: {
       int label_count = gen_label();
-      codegen_stmt(n->u.for_.initializer);
+      if (n->u.for_.initializer) {
+        codegen_stmt(n->u.for_.initializer);
+      }
       printf(".L.for.header.%d:\n", label_count);
       if (n->u.for_.cond) {
         codegen_expr(n->u.for_.cond);
