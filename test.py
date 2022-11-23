@@ -23,7 +23,7 @@ def run_test(src: str, expected: int) -> None:
 
         with open(input_s, 'w') as output:
             subprocess.check_call(["./scc", input_c], stdout=output)
-        subprocess.check_call(["clang", "-static", "-o", input, input_s])
+        subprocess.check_call(["cc", "-static", "-o", input, input_s])
         result = subprocess.call([input])
         if result != expected:
             print(f"\n{src}\n\nExpected {expected}, got {result}")
