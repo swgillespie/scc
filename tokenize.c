@@ -82,8 +82,13 @@ tokenize(void)
         c++;
         break;
       case '+':
-        cursor->next = make_token(TOKEN_PLUS, c, 1);
-        c++;
+        if (*++c == '+') {
+          cursor->next = make_token(TOKEN_PLUS_PLUS, c - 1, 2);
+          c++;
+        } else {
+          cursor->next = make_token(TOKEN_PLUS, c, 1);
+        }
+
         break;
       case '-':
         cursor->next = make_token(TOKEN_MINUS, c, 1);

@@ -154,6 +154,9 @@ static node*
 add_expr(token**);
 
 static node*
+postfix_expr(token**);
+
+static node*
 expr(token**);
 
 static node*
@@ -442,21 +445,54 @@ add_expr(token** cursor)
 static node*
 mul_expr(token** cursor)
 {
-  node* base = primary(cursor);
+  node* base = postfix_expr(cursor);
   for (;;) {
     if (equal(cursor, TOKEN_STAR)) {
-      base = make_node_binary(BINOP_MUL, base, primary(cursor));
+      base = make_node_binary(BINOP_MUL, base, postfix_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_PERCENT)) {
-      base = make_node_binary(BINOP_MOD, base, primary(cursor));
+      base = make_node_binary(BINOP_MOD, base, postfix_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_SLASH)) {
-      base = make_node_binary(BINOP_DIV, base, primary(cursor));
+      base = make_node_binary(BINOP_DIV, base, postfix_expr(cursor));
       continue;
+    }
+
+    return base;
+  }
+}
+
+/**
+ * A simplistic definition of an lvalue.
+ */
+static int
+is_lvalue(node* n)
+{
+  return n->kind == NODE_SYMBOL_REF;
+}
+
+/**
+ * postfix_expr = primary ("++")*
+ */
+static node*
+postfix_expr(token** cursor)
+{
+  node* base = primary(cursor);
+  for (;;) {
+    if (equal(cursor, TOKEN_PLUS_PLUS)) {
+      // Post-increment is only legal on lvalues
+      if (!is_lvalue(base)) {
+        error_at(*cursor, "lvalue required as increment operand");
+      }
+
+      // rough desugar into "base = base + 1", where lhs base is evaluated
+      // in an lvalue context and rhs base in a rvalue context
+      return base = make_node_assign(
+               base, make_node_binary(BINOP_ADD, base, make_node_const(1)));
     }
 
     return base;
