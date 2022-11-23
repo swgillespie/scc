@@ -107,6 +107,24 @@ make_for_stmt(node* initializer, node* cond, node* next, node* body)
   return n;
 }
 
+static node*
+make_deref(node* base)
+{
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_DEREF;
+  n->u.deref_value = base;
+  return n;
+}
+
+static node*
+make_addrof(node* base)
+{
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_ADDROF;
+  n->u.addrof_value = base;
+  return n;
+}
+
 static token*
 eat(token** cursor, token_kind kind)
 {
@@ -176,6 +194,9 @@ for_stmt(token**);
 
 static node*
 while_stmt(token**);
+
+static node*
+unary_expr(token**);
 
 /**
  * stmt = return_stmt | declaration | expr SEMI | compound_statement |
@@ -254,6 +275,10 @@ static node*
 declaration(token** cursor)
 {
   eat(cursor, TOKEN_INT);
+  // TODO - for real decls, we'll need to keep track of the type declared here
+  // this is a hack to write a valid c program that uses pointers
+  while (equal(cursor, TOKEN_STAR))
+    ;
   token* ident = eat(cursor, TOKEN_IDENT);
   if (equal(cursor, TOKEN_EQUAL)) {
     node* initializer = expr(cursor);
@@ -445,7 +470,7 @@ add_expr(token** cursor)
 static node*
 mul_expr(token** cursor)
 {
-  node* base = postfix_expr(cursor);
+  node* base = unary_expr(cursor);
   for (;;) {
     if (equal(cursor, TOKEN_STAR)) {
       base = make_node_binary(BINOP_MUL, base, postfix_expr(cursor));
@@ -472,7 +497,33 @@ mul_expr(token** cursor)
 static int
 is_lvalue(node* n)
 {
-  return n->kind == NODE_SYMBOL_REF;
+  return n->kind == NODE_SYMBOL_REF || n->kind == NODE_DEREF;
+}
+
+/*
+ * unary_expression
+ *   : postfix_expression
+ *   | ("*" | "&") unary_expression
+ *   ;
+ */
+static node*
+unary_expr(token** cursor)
+{
+  if (equal(cursor, TOKEN_STAR)) {
+    node* base = unary_expr(cursor);
+    // TODO error if base is not a pointer or is a void pointer
+    return make_deref(base);
+  }
+
+  if (equal(cursor, TOKEN_AMPERSAND)) {
+    node* base = unary_expr(cursor);
+    if (!is_lvalue(base)) {
+      error_at(*cursor, "not an lvalue");
+    }
+    return make_addrof(base);
+  }
+
+  return postfix_expr(cursor);
 }
 
 /**

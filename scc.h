@@ -43,6 +43,7 @@ typedef enum
   TOKEN_NOT_EQ,
   TOKEN_LT,
   TOKEN_LT_EQ,
+  TOKEN_AMPERSAND,
   TOKEN_EOF,
 } token_kind;
 
@@ -72,6 +73,8 @@ typedef enum node_kind
   NODE_ASSIGN,
   NODE_NOP,
   NODE_SYMBOL_REF,
+  NODE_ADDROF,
+  NODE_DEREF,
   /* Control flow */
   NODE_IF,
   NODE_FOR,
@@ -130,6 +133,8 @@ typedef struct node
       struct node* next;        /* i++ */
       struct node* body;
     } for_;
+    struct node* addrof_value;
+    struct node* deref_value;
   } u;
 } node;
 

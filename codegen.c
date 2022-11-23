@@ -19,6 +19,9 @@ pop(const char* reg)
   printf("  pop %%%s\n", reg);
 }
 
+void
+codegen_expr(node*);
+
 /**
  * Given an expression that produces an lvalue, push the address of that lvalue
  * onto the value stack.
@@ -32,6 +35,9 @@ codegen_lvalue_addr(node* n)
              n->u.symbol_ref->frame_offset,
              symbol_name(n->u.symbol_ref));
       push("rax");
+      break;
+    case NODE_DEREF:
+      codegen_expr(n->u.deref_value);
       break;
     default:
       error_at(NULL, "not an lvalue");
@@ -120,6 +126,17 @@ codegen_expr(node* n)
     pop("rdi"); // lvalue
     pop("rax"); // rvalue
     printf("  movq %%rax, (%%rdi)\n");
+    push("rax");
+  }
+
+  if (n->kind == NODE_ADDROF) {
+    codegen_lvalue_addr(n->u.addrof_value);
+  }
+
+  if (n->kind == NODE_DEREF) {
+    codegen_expr(n->u.deref_value);
+    pop("rax");
+    printf("  movq (%%rax), %%rax\n");
     push("rax");
   }
 }
