@@ -1,5 +1,6 @@
 #include "scc.h"
 
+static char* source_name;
 static char* source;
 static size_t source_len;
 
@@ -12,6 +13,7 @@ load_file(const char* filename)
     exit(1);
   }
 
+  source_name = strdup(filename);
   FILE* stream = open_memstream(&source, &source_len);
   for (;;) {
     char read_buf[4096];
@@ -183,4 +185,63 @@ tokenize(void)
 
   cursor->next = make_token(TOKEN_EOF, c, 0);
   return head.next;
+}
+
+void
+verror_at(token* tok, const char* fmt, va_list args)
+{
+  // Two things we want to accomplish here, for the sake of the error message
+  // we're about to emit:
+  //  1. Calculate the line and column of the error, based on the given token's
+  //  position
+  //  2. Save the line upon which the error occurs so that we can print a carat
+  //  pinpointing the error
+  //
+  // Both are done in this loop.
+  int line = 1, col = 1;
+  const char* line_start = source;
+  const char* c = source;
+  while (*c != '\0') {
+    if (c == tok->pos) {
+      break;
+    }
+
+    col++;
+    if (*c == '\n') {
+      line++;
+      col = 1;
+      c++;
+      line_start = c;
+    } else {
+      c++;
+    }
+  }
+
+  // We've stopped midway through a line - advance the cursor to the end of
+  // the line.
+  while (*c++ != '\n')
+    ;
+
+  // Don't print the last newline.
+  c--;
+  size_t len = c - line_start;
+  char* line_text = strndup(line_start, len);
+
+  fprintf(stderr, "%s:%d:%d: error: ", source_name, line, col);
+  vfprintf(stderr, fmt, args);
+  fprintf(stderr, "\n");
+  fprintf(stderr, "%5d | %s\n", line, line_text);
+  fprintf(stderr, "      |%*s^\n", col, " ");
+  fflush(stderr);
+  exit(1);
+}
+
+void
+error_at(token* tok, const char* fmt, ...)
+{
+  (void)tok;
+  va_list args;
+  va_start(args, fmt);
+  verror_at(tok, fmt, args);
+  va_end(args);
 }
