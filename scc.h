@@ -15,6 +15,7 @@
 
 typedef enum
 {
+  TOKEN_ERROR,
   // Probably not real tokens, these are identifiers?
   TOKEN_INT,
   TOKEN_MAIN,

@@ -175,6 +175,8 @@ tokenize(void)
 
           cursor->next = make_token(TOKEN_INTEGER, c - len, len);
           cursor->next->value = value;
+        } else {
+          error_at(make_token(TOKEN_ERROR, c, 1), "unrecognized character");
         }
 
         break;
