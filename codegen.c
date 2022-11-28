@@ -200,6 +200,10 @@ codegen_expr(node* n)
       pop(argument_regs[num_args-- - 1]);
     }
 
+    // When calling variadic functions, the System V ABI requires that the
+    // number of vector arguments be written into %al. We don't support that, so
+    // we just write zero.
+    printf("  mov $0, %%al\n");
     printf("  call %s\n", n->u.call.name);
     push("rax");
   }
