@@ -28,6 +28,7 @@ typedef enum
   TOKEN_SIZEOF,
   // These are real tokens.
   TOKEN_IDENT,
+  TOKEN_CHAR_LITERAL,
   TOKEN_LPAREN,
   TOKEN_RPAREN,
   TOKEN_LBRACE,

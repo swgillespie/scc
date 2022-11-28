@@ -778,7 +778,7 @@ postfix_expr(token** cursor)
 }
 
 /**
- * primary = integer | "(" expression ")" | identifier
+ * primary = integer | char_literal | "(" expression ")" | identifier
  */
 static node*
 primary(token** cursor)
@@ -805,6 +805,11 @@ primary(token** cursor)
      * identifier to actually be bound.
      */
     return make_symbol_ref(name, NULL);
+  }
+
+  if (peek(cursor, TOKEN_CHAR_LITERAL)) {
+    token* char_lit = eat(cursor, TOKEN_CHAR_LITERAL);
+    return make_node_const(char_lit, ty_int, char_lit->value);
   }
 
   token* integer = eat(cursor, TOKEN_INTEGER);

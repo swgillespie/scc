@@ -109,6 +109,8 @@ def main():
     run_test('int main() { int x[2]; int* y = x; y[0] = 1; return x[0];} ', 1)
     run_test('int main() { int x[2]; int* y = x + 1; y[0] = 1; return x[1];} ', 1)
     run_test('int main() { char x; return sizeof(x); }', 1)
+    run_test('int main() { return \'x\' == 120; }', 1)
+    run_test('int main() { return \'\n\' == 10; }', 1)
     print(f"\n\n{succeeded}/{succeeded + failed} passed")
     sys.exit(0 if failed == 0 else 1)
 

@@ -197,6 +197,64 @@ tokenize(void)
 
           cursor->next = make_token(TOKEN_INTEGER, c - len, len);
           cursor->next->value = value;
+        } else if (*c == '\'') {
+          char* pos = c;
+          c++;
+          int seen_char_already = 0;
+          int warned = 0;
+
+          // C has this mind-boggling feature in which you can have multiple
+          // characters live in a single character literal squence. The value of
+          // this literal is equal to the source character values (in this
+          // case, 8-bit chars) smashed together into an int.
+          //
+          // This is ludicrous, but luckily not hard to implement, so we do so
+          // here.
+          int value = 0;
+          while (*c != '\'') {
+            if (seen_char_already) {
+              if (!warned) {
+                warn_at(cursor, "multi-character character constant");
+                warned = 1;
+              }
+              value <<= 8;
+            }
+
+            seen_char_already = 1;
+            switch (*c) {
+              case '\\': {
+                c++;
+                switch (*c) {
+                  case '\'':
+                    value |= '\'';
+                    break;
+                  case '\"':
+                    value |= '"';
+                    break;
+                  case '\\':
+                    value |= '\\';
+                    break;
+                  case 'n':
+                    value |= '\n';
+                    break;
+                  default:
+                    error_at(cursor, "unrecognized escape sequence");
+                    break;
+                }
+
+                break;
+              }
+              default:
+                value |= *c;
+                break;
+            }
+
+            c++;
+          }
+
+          c++;
+          cursor->next = make_token(TOKEN_CHAR_LITERAL, pos, c - pos);
+          cursor->next->value = value;
         } else {
           error_at(make_token(TOKEN_ERROR, c, 1), "unrecognized character");
         }
@@ -216,10 +274,10 @@ vdiagnostic_at(token* tok, const char* prefix, const char* fmt, va_list args)
 {
   // Two things we want to accomplish here, for the sake of the error message
   // we're about to emit:
-  //  1. Calculate the line and column of the error, based on the given token's
-  //  position
-  //  2. Save the line upon which the error occurs so that we can print a carat
-  //  pinpointing the error
+  //  1. Calculate the line and column of the error, based on the given
+  //  token's position
+  //  2. Save the line upon which the error occurs so that we can print a
+  //  carat pinpointing the error
   //
   // Both are done in this loop.
   int line = 1, col = 1;
