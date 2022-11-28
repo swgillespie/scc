@@ -2,6 +2,9 @@
 
 static const char* argument_regs[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
+/** for debugging purposes, the current depth of the value stack */
+static int depth;
+
 static int
 gen_label()
 {
@@ -12,13 +15,36 @@ gen_label()
 static void
 push(const char* reg)
 {
+  depth++;
   printf("  push %%%s\n", reg);
 }
 
 static void
 pop(const char* reg)
 {
+  if (depth == 0) {
+    ice_at(NULL, "pop from empty value stack");
+  }
+  depth--;
   printf("  pop %%%s\n", reg);
+}
+
+static void
+pop_void(void)
+{
+  if (depth == 0) {
+    ice_at(NULL, "pop from empty value stack");
+  }
+  depth--;
+  printf("  add $8, %%rsp\n");
+}
+
+static void
+assert_stack_empty(void)
+{
+  if (depth != 0) {
+    ice_at(NULL, "value stack is not empty (depth %d)", depth);
+  }
 }
 
 /**
@@ -222,7 +248,7 @@ codegen_stmt(node* base)
         break;
       case NODE_EXPR_STMT:
         codegen_expr(n->u.expr_stmt_value);
-        printf("  add $8, %%rsp\n");
+        pop_void();
         break;
       case NODE_COMPOUND_STMT:
         for (node* stmt = n->u.compound_stmts; stmt; stmt = stmt->next) {
@@ -259,7 +285,7 @@ codegen_stmt(node* base)
         codegen_stmt(n->u.for_.body);
         if (n->u.for_.next) {
           codegen_expr(n->u.for_.next);
-          printf("  add $8, %%rsp\n");
+          pop_void();
         }
         printf("  jmp .L.for.header.%d\n", label_count);
         printf(".L.for.end.%d:\n", label_count);
@@ -279,6 +305,8 @@ codegen_stmt(node* base)
       default:
         break;
     }
+
+    assert_stack_empty();
   }
 }
 
@@ -300,7 +328,7 @@ codegen_function(symbol* sym)
   int offset = calculate_frame_layout(sym);
   printf(".globl %s\n", sym->name);
   printf("%s:\n", sym->name);
-  push("rbp");
+  printf("  push %%rbp\n");
   printf("  movq %%rsp, %%rbp\n");
   printf("  sub $%d, %%rsp\n", offset);
   codegen_stmt(sym->u.function.body);

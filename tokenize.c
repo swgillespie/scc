@@ -405,6 +405,14 @@ ice_at(token* tok, const char* fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
+  if (!tok) {
+    fprintf(stderr, "internal compiler error: ");
+    vfprintf(stderr, fmt, args);
+    fputs("\n", stderr);
+    fflush(stderr);
+    abort();
+  }
+
   vdiagnostic_at(tok, "internal compiler error", fmt, args);
   va_end(args);
   abort();
