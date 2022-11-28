@@ -218,6 +218,19 @@ make_for_stmt(token* tok, node* initializer, node* cond, node* next, node* body)
 }
 
 static node*
+make_do_stmt(token* tok, node* body, node* cond)
+{
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_DO;
+  n->tok = tok;
+  n->ty = ty_void;
+  // TODO(check): cond->ty is scalar
+  n->u.do_.body = body;
+  n->u.do_.cond = cond;
+  return n;
+}
+
+static node*
 make_deref(token* tok, node* base)
 {
   node* n = malloc(sizeof(node));
@@ -322,6 +335,9 @@ static node*
 while_stmt(token**);
 
 static node*
+do_stmt(token**);
+
+static node*
 unary_expr(token**);
 
 /**
@@ -362,7 +378,7 @@ can_start_type_name(token** cursor)
 
 /**
  * stmt = return_stmt | declaration | expr SEMI | compound_statement |
- * if_statement | for_statement | while_statement
+ * if_statement | for_statement | while_statement | do_statement
  */
 static node*
 stmt(token** cursor)
@@ -389,6 +405,10 @@ stmt(token** cursor)
 
   if (peek(cursor, TOKEN_WHILE)) {
     return while_stmt(cursor);
+  }
+
+  if (peek(cursor, TOKEN_DO)) {
+    return do_stmt(cursor);
   }
 
   node* e = expr(cursor);
@@ -551,6 +571,23 @@ while_stmt(token** cursor)
   eat(cursor, TOKEN_RPAREN);
   node* body = stmt(cursor);
   return make_for_stmt(while_tok, NULL, cond, NULL, body);
+}
+
+/**
+ * do_stmt
+ *  : "do" stmt "while" "(" expr ")" ";"
+ */
+static node*
+do_stmt(token** cursor)
+{
+  token* do_tok = eat(cursor, TOKEN_DO);
+  node* body = stmt(cursor);
+  eat(cursor, TOKEN_WHILE);
+  eat(cursor, TOKEN_LPAREN);
+  node* cond = expr(cursor);
+  eat(cursor, TOKEN_RPAREN);
+  eat(cursor, TOKEN_SEMICOLON);
+  return make_do_stmt(do_tok, body, cond);
 }
 
 /**

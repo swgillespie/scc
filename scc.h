@@ -19,6 +19,7 @@ typedef enum
   TOKEN_CHAR,
   TOKEN_MAIN,
   // Reserved words
+  TOKEN_DO,
   TOKEN_IF,
   TOKEN_ELSE,
   TOKEN_FOR,
@@ -130,7 +131,9 @@ typedef enum node_kind
   NODE_CALL,
   /* Control flow */
   NODE_IF,
+  /* TODO: it's probably possible to unify the two loop nodes */
   NODE_FOR,
+  NODE_DO,
   /* Statements */
   NODE_RETURN,
   NODE_EXPR_STMT,
@@ -196,6 +199,11 @@ typedef struct node
       char* name;
       struct node* args;
     } call;
+    struct
+    {
+      struct node* body;
+      struct node* cond;
+    } do_;
   } u;
 } node;
 

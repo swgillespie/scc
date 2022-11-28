@@ -264,6 +264,16 @@ codegen_stmt(node* n)
       printf(".L.for.end.%d:\n", label_count);
       break;
     }
+    case NODE_DO: {
+      int label_count = gen_label();
+      printf(".L.do.body.%d:\n", label_count);
+      codegen_stmt(n->u.do_.body);
+      codegen_expr(n->u.do_.cond);
+      pop("rax");
+      printf("  cmp $0, %%rax\n");
+      printf("  jne .L.do.body.%d\n", label_count);
+      break;
+    }
 
     default:
       break;
