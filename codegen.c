@@ -210,73 +210,75 @@ codegen_expr(node* n)
 }
 
 void
-codegen_stmt(node* n)
+codegen_stmt(node* base)
 {
-  switch (n->kind) {
-    case NODE_RETURN:
-      codegen_expr(n->u.return_value);
-      pop("rax");
-      printf("  leave\n");
-      printf("  ret\n");
-      break;
-    case NODE_EXPR_STMT:
-      codegen_expr(n->u.expr_stmt_value);
-      printf("  add $8, %%rsp\n");
-      break;
-    case NODE_COMPOUND_STMT:
-      for (node* stmt = n->u.compound_stmts; stmt; stmt = stmt->next) {
-        codegen_stmt(stmt);
-      }
-      break;
-    case NODE_IF: {
-      int label_count = gen_label();
-      codegen_expr(n->u.if_.cond);
-      pop("rax");
-      printf("  cmp $0, %%rax\n");
-      printf("  je .L.else.%d\n", label_count);
-      codegen_stmt(n->u.if_.then);
-      printf("  jmp .L.end.%d\n", label_count);
-      printf(".L.else.%d:\n", label_count);
-      if (n->u.if_.else_) {
-        codegen_stmt(n->u.if_.else_);
-      }
-      printf(".L.end.%d:\n", label_count);
-      break;
-    }
-    case NODE_FOR: {
-      int label_count = gen_label();
-      if (n->u.for_.initializer) {
-        codegen_stmt(n->u.for_.initializer);
-      }
-      printf(".L.for.header.%d:\n", label_count);
-      if (n->u.for_.cond) {
-        codegen_expr(n->u.for_.cond);
+  for (node* n = base; n; n = n->next) {
+    switch (n->kind) {
+      case NODE_RETURN:
+        codegen_expr(n->u.return_value);
+        pop("rax");
+        printf("  leave\n");
+        printf("  ret\n");
+        break;
+      case NODE_EXPR_STMT:
+        codegen_expr(n->u.expr_stmt_value);
+        printf("  add $8, %%rsp\n");
+        break;
+      case NODE_COMPOUND_STMT:
+        for (node* stmt = n->u.compound_stmts; stmt; stmt = stmt->next) {
+          codegen_stmt(stmt);
+        }
+        break;
+      case NODE_IF: {
+        int label_count = gen_label();
+        codegen_expr(n->u.if_.cond);
         pop("rax");
         printf("  cmp $0, %%rax\n");
-        printf("  je .L.for.end.%d\n", label_count);
+        printf("  je .L.else.%d\n", label_count);
+        codegen_stmt(n->u.if_.then);
+        printf("  jmp .L.end.%d\n", label_count);
+        printf(".L.else.%d:\n", label_count);
+        if (n->u.if_.else_) {
+          codegen_stmt(n->u.if_.else_);
+        }
+        printf(".L.end.%d:\n", label_count);
+        break;
       }
-      codegen_stmt(n->u.for_.body);
-      if (n->u.for_.next) {
-        codegen_expr(n->u.for_.next);
-        printf("  add $8, %%rsp\n");
+      case NODE_FOR: {
+        int label_count = gen_label();
+        if (n->u.for_.initializer) {
+          codegen_stmt(n->u.for_.initializer);
+        }
+        printf(".L.for.header.%d:\n", label_count);
+        if (n->u.for_.cond) {
+          codegen_expr(n->u.for_.cond);
+          pop("rax");
+          printf("  cmp $0, %%rax\n");
+          printf("  je .L.for.end.%d\n", label_count);
+        }
+        codegen_stmt(n->u.for_.body);
+        if (n->u.for_.next) {
+          codegen_expr(n->u.for_.next);
+          printf("  add $8, %%rsp\n");
+        }
+        printf("  jmp .L.for.header.%d\n", label_count);
+        printf(".L.for.end.%d:\n", label_count);
+        break;
       }
-      printf("  jmp .L.for.header.%d\n", label_count);
-      printf(".L.for.end.%d:\n", label_count);
-      break;
-    }
-    case NODE_DO: {
-      int label_count = gen_label();
-      printf(".L.do.body.%d:\n", label_count);
-      codegen_stmt(n->u.do_.body);
-      codegen_expr(n->u.do_.cond);
-      pop("rax");
-      printf("  cmp $0, %%rax\n");
-      printf("  jne .L.do.body.%d\n", label_count);
-      break;
-    }
+      case NODE_DO: {
+        int label_count = gen_label();
+        printf(".L.do.body.%d:\n", label_count);
+        codegen_stmt(n->u.do_.body);
+        codegen_expr(n->u.do_.cond);
+        pop("rax");
+        printf("  cmp $0, %%rax\n");
+        printf("  jne .L.do.body.%d\n", label_count);
+        break;
+      }
 
-    default:
-      break;
+      default:
+        break;
+    }
   }
 }
 
@@ -301,10 +303,7 @@ codegen_function(symbol* sym)
   push("rbp");
   printf("  movq %%rsp, %%rbp\n");
   printf("  sub $%d, %%rsp\n", offset);
-  for (node* cursor = sym->u.function.body; cursor != NULL;
-       cursor = cursor->next) {
-    codegen_stmt(cursor);
-  }
+  codegen_stmt(sym->u.function.body);
   printf("  leave\n");
   printf("  ret\n");
 }
