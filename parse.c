@@ -46,10 +46,49 @@ make_node_binary(token* tok, binop op, node* left, node* right)
   node* n = malloc(sizeof(node));
   n->kind = NODE_BINOP;
   n->tok = tok;
+  SCC_ASSERT(n->tok, op != BINOP_ADD, "call make_add() instead for add ops");
   // TODO - there are complex promotion rules that inform what the type of
   // this expression will be
   n->ty = left->ty;
   n->u.binop.op = op;
+  n->u.binop.left = left;
+  n->u.binop.right = right;
+  return n;
+}
+
+static node*
+make_add(token* tok, node* left, node* right)
+{
+  node* n = malloc(sizeof(node));
+  n->tok = tok;
+  n->u.binop.op = BINOP_ADD;
+  // 6.5.6 Additive Operators (C11: Page 92)
+  if ((left->ty->base && right->ty->kind == TYPE_INT) ||
+      (left->ty->kind == TYPE_INT && right->ty->base)) {
+    // Only "arithmetic type" is required for the non-pointer argument here,
+    // but we only have ints right now.
+    n->ty = left->ty->base ? left->ty : right->ty;
+
+    // This is where "pointer arithmetic" for the + operator is implemented.
+    n->u.binop.left = left;
+    n->u.binop.right = make_node_binary(
+      tok, BINOP_MUL, right, make_node_const(tok, ty_int, n->ty->size));
+    return n;
+  }
+
+  if (left->ty->kind != TYPE_INT) {
+    error_at(left->tok,
+             "invalid type for `+` operator (have `%s`)",
+             type_name(left->ty));
+  }
+
+  if (right->ty->kind != TYPE_INT) {
+    error_at(right->tok,
+             "invalid type for `+` operator (have `%s`)",
+             type_name(right->ty));
+  }
+
+  n->ty = left->ty;
   n->u.binop.left = left;
   n->u.binop.right = right;
   return n;
@@ -520,7 +559,7 @@ add_expr(token** cursor)
   for (;;) {
     token* op_tok = *cursor;
     if (equal(cursor, TOKEN_PLUS)) {
-      base = make_node_binary(op_tok, BINOP_ADD, base, mul_expr(cursor));
+      base = make_add(op_tok, base, mul_expr(cursor));
       continue;
     }
 
@@ -624,7 +663,7 @@ unary_expr(token** cursor)
 }
 
 /**
- * postfix_expr = primary ("++" | "(" argument_list ")")*
+ * postfix_expr = primary ("++" | "(" argument_list ")" | "[" expression "]")*
  */
 static node*
 postfix_expr(token** cursor)
@@ -643,8 +682,7 @@ postfix_expr(token** cursor)
       return make_node_assign(
         candidate,
         base,
-        make_node_binary(
-          candidate, BINOP_ADD, base, make_node_const(candidate, ty_int, 1)));
+        make_add(candidate, base, make_node_const(candidate, ty_int, 1)));
     }
 
     if (equal(cursor, TOKEN_LPAREN)) {
@@ -673,6 +711,35 @@ postfix_expr(token** cursor)
       }
 
       return make_call(candidate, name, arg_head.next);
+    }
+
+    if (equal(cursor, TOKEN_LBRACKET)) {
+      // 6.5.2.1 Array subscripting
+      //
+      // Array subscripting in C is just sugar for pointer arithmetic.
+      // e1[e2] is exactly equivalent to *(e1 + e2).
+      //
+      // These types are checked in make_add, but we check them again here for
+      // a better error message prior to desugaring down to `+` and `*`.
+      node* subscript = expr(cursor);
+      eat(cursor, TOKEN_RBRACKET);
+      if ((base->ty->base && subscript->ty->kind == TYPE_INT) ||
+          (subscript->ty->kind == TYPE_INT && base->ty->base)) {
+        // Quick constant-fold here to avoid generating really dumb code when
+        // the subscript expr is trivially zero.
+        if (subscript->kind == NODE_CONST && subscript->u.const_value == 0) {
+          return make_deref(candidate, base);
+        }
+
+        // Otherwise, *(e1 + e2)
+        return make_deref(candidate, make_add(candidate, base, subscript));
+      }
+
+      error_at(
+        candidate,
+        "invalid types for array subscript operator (have `%s` and `%s`)",
+        type_name(base->ty),
+        type_name(subscript->ty));
     }
 
     return base;

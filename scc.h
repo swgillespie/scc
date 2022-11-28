@@ -242,10 +242,20 @@ codegen(symbol* sym);
 /**
  * Miscellaneous utility routines
  */
-void
+__attribute__((noreturn)) void
 error_at(token* tok, const char* fmt, ...);
 
 void
 warn_at(token* tok, const char* fmt, ...);
+
+__attribute__((noreturn)) void
+ice_at(token* tok, const char* fmt, ...);
+
+#define SCC_ASSERT(tok, cond, fmt, ...)                                        \
+  do {                                                                         \
+    if (!(cond)) {                                                             \
+      ice_at((tok), fmt, ##__VA_ARGS__);                                       \
+    }                                                                          \
+  } while (0)
 
 #endif /* __SCC_H__ */

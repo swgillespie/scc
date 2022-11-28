@@ -276,3 +276,13 @@ warn_at(token* tok, const char* fmt, ...)
   vdiagnostic_at(tok, "warning", fmt, args);
   va_end(args);
 }
+
+void
+ice_at(token* tok, const char* fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+  vdiagnostic_at(tok, "internal compiler error", fmt, args);
+  va_end(args);
+  abort();
+}

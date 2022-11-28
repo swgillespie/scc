@@ -27,6 +27,7 @@ pop(const char* reg)
 static void
 load(type* ty)
 {
+  pop("rax");
   /**
    * In C, arrays "decay" to pointers. The identifier reference of an array
    * evaluates to a pointer to the array's first element.
@@ -38,7 +39,6 @@ load(type* ty)
     return;
   }
 
-  pop("rax");
   printf("  mov (%%rax), %%rax\n");
 }
 

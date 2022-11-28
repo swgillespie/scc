@@ -104,6 +104,10 @@ def main():
     run_test('int main() { int x[5]; return 0; }', 0)
     run_test('int main() { int x[5]; return sizeof(x); }', 40)
     run_test('int main() { int x[5]; return sizeof x; }', 40)
+    run_test('int main() { int x[2]; x[0] = 1; return x[0]; }', 1)
+    run_test('int main() { int x[2]; x[1] = 1; return x[1]; }', 1)
+    run_test('int main() { int x[2]; int* y = x; y[0] = 1; return x[0];} ', 1)
+    run_test('int main() { int x[2]; int* y = x + 1; y[0] = 1; return x[1];} ', 1)
     print(f"\n\n{succeeded}/{succeeded + failed} passed")
     sys.exit(0 if failed == 0 else 1)
 
