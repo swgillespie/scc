@@ -110,7 +110,7 @@ make_add(token* tok, node* left, node* right)
     // This is where "pointer arithmetic" for the + operator is implemented.
     n->u.binop.left = left;
     n->u.binop.right = make_node_binary(
-      tok, BINOP_MUL, right, make_node_const(tok, ty_int, n->ty->size));
+      tok, BINOP_MUL, right, make_node_const(tok, ty_int, n->ty->base->size));
     return n;
   }
 
