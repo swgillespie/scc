@@ -65,13 +65,13 @@ make_string_literal(token* tok)
   static int counter = 0;
 
   char symbol_name_buf[4096];
-  memset(symbol_name_buf, 1, 4096);
+  memset(symbol_name_buf, 0, 4096);
 
   char* contents = tok->string_value;
   size_t len = strlen(contents);
   type* ty = make_array_type(ty_char, len);
   snprintf(symbol_name_buf, 4096, ".L.str.%d", counter++);
-  symbol* sym = make_symbol_global(tok, ty, symbol_name_buf);
+  symbol* sym = make_symbol_global(tok, ty, strdup(symbol_name_buf));
   sym->u.global_data = contents;
   symbols = symbols->next = sym;
   // TODO - deduplicate string literals
