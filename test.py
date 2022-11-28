@@ -100,7 +100,7 @@ def main():
     run_test('int main() { return returns_zero(); }', 0)
     run_test('int main() { return returns_argument(5); }', 5)
     run_test('int main() { return adds_arguments(2, 3); }', 5)
-    run_test('int main() { return adds_six_args(1, 1, 1, 1, 1, 1); }', 6)
+    run_test('int main() { return adds_six_args(1, 2, 3, 4, 5, 6); }', 21)
     run_test('int main() { int x[5]; return 0; }', 0)
     run_test('int main() { int x[5]; return sizeof(x); }', 40)
     run_test('int main() { int x[5]; return sizeof x; }', 40)
