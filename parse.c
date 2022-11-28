@@ -391,6 +391,10 @@ stmt(token** cursor)
     return while_stmt(cursor);
   }
 
+  if (equal(cursor, TOKEN_SEMICOLON)) {
+    return NULL;
+  }
+
   node* e = expr(cursor);
   token* semi_tok = eat(cursor, TOKEN_SEMICOLON);
   return make_expr_stmt(semi_tok, e);
@@ -882,7 +886,10 @@ parse_function(token** cursor)
   node head = { 0 };
   node* n = &head;
   while ((*cursor)->kind != TOKEN_RBRACE) {
-    n = n->next = stmt(cursor);
+    node* s = stmt(cursor);
+    if (s) {
+      n = n->next = s;
+    }
   }
   eat(cursor, TOKEN_RBRACE);
   current_function->u.function.body = head.next;
