@@ -274,12 +274,12 @@ calculate_frame_layout(symbol* func)
   return -offset;
 }
 
-void
-codegen(symbol* sym)
+static void
+codegen_symbol(symbol* sym)
 {
   int offset = calculate_frame_layout(sym);
-  printf(".globl main\n");
-  printf("main:\n");
+  printf(".globl %s\n", sym->name);
+  printf("%s:\n", sym->name);
   push("rbp");
   printf("  movq %%rsp, %%rbp\n");
   printf("  sub $%d, %%rsp\n", offset);
@@ -289,4 +289,12 @@ codegen(symbol* sym)
   }
   printf("  leave\n");
   printf("  ret\n");
+}
+
+void
+codegen(symbol* symbols)
+{
+  for (symbol* sym = symbols; sym; sym = sym->next) {
+    codegen_symbol(sym);
+  }
 }

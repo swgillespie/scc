@@ -5,6 +5,11 @@
  */
 static symbol* current_function;
 
+/**
+ * All of the symbols that will need to be emitted later.
+ */
+static symbol* symbols;
+
 static symbol*
 make_symbol_local(token* tok, type* ty)
 {
@@ -791,8 +796,17 @@ primary(token** cursor)
 
   if (peek(cursor, TOKEN_IDENT)) {
     token* name = eat(cursor, TOKEN_IDENT);
+
+    // Local variables
     for (symbol* sym = current_function->u.function.locals; sym;
          sym = sym->next) {
+      if (strncmp(name->pos, sym->name, name->len) == 0) {
+        return make_symbol_ref(name, sym);
+      }
+    }
+
+    // Global variables
+    for (symbol* sym = symbols; sym; sym = sym->next) {
       if (strncmp(name->pos, sym->name, name->len) == 0) {
         return make_symbol_ref(name, sym);
       }
@@ -816,13 +830,13 @@ primary(token** cursor)
   return make_node_const(integer, ty_int, integer->value);
 }
 
-symbol*
-parse(token** cursor)
+static void
+parse_function(token** cursor)
 {
   eat(cursor, TOKEN_INT);
-  token* main_tok = eat(cursor, TOKEN_MAIN);
+  token* name = eat(cursor, TOKEN_IDENT);
   current_function =
-    make_symbol_function(main_tok, ty_void /* should be a function type */);
+    make_symbol_function(name, ty_void /* should be a function type */);
   eat(cursor, TOKEN_LPAREN);
   eat(cursor, TOKEN_RPAREN);
   eat(cursor, TOKEN_LBRACE);
@@ -832,7 +846,19 @@ parse(token** cursor)
     n = n->next = stmt(cursor);
   }
   eat(cursor, TOKEN_RBRACE);
-  eat(cursor, TOKEN_EOF);
   current_function->u.function.body = head.next;
-  return current_function;
+  symbols = symbols->next = current_function;
+}
+
+symbol*
+parse(token** cursor)
+{
+  symbol head = { 0 };
+  symbols = &head;
+
+  while (!equal(cursor, TOKEN_EOF)) {
+    parse_function(cursor);
+  }
+
+  return head.next;
 }
