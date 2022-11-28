@@ -21,6 +21,39 @@ pop(const char* reg)
   printf("  pop %%%s\n", reg);
 }
 
+/**
+ * Loads a value of type ty from an address currently on the stack into rax.
+ */
+static void
+load(type* ty)
+{
+  /**
+   * In C, arrays "decay" to pointers. The identifier reference of an array
+   * evaluates to a pointer to the array's first element.
+   *
+   * There's no actual codegen to "load" a value of type array, since the
+   * pointer to the first element of the array is already on the stack.
+   */
+  if (ty->kind == TYPE_ARRAY) {
+    return;
+  }
+
+  pop("rax");
+  printf("  mov (%%rax), %%rax\n");
+}
+
+/**
+ * Pops a value and an lvalue address off of the stack and stores the value into
+ * the lvalue address.
+ */
+static void
+store(void)
+{
+  pop("rdi"); // lvalue
+  pop("rax"); // rvalue
+  printf("  mov %%rax, (%%rdi)\n");
+}
+
 void
 codegen_expr(node*);
 
@@ -124,28 +157,15 @@ codegen_expr(node* n)
       error_at(n->tok, "unbound identifier");
     }
 
-    if (n->ty->kind == TYPE_ARRAY) {
-      /**
-       * In C, arrays "decay" to pointers. The identifier reference of an array
-       * evaluates to a pointer to the array's first element.
-       */
-      printf("  lea %d(%%rbp), %%rax # array symbol ref `%s`\n",
-             n->u.symbol_ref->u.frame_offset,
-             n->u.symbol_ref->name);
-    }
-
-    printf("  movq %d(%%rbp), %%rax # symbol ref `%s`\n",
-           n->u.symbol_ref->u.frame_offset,
-           n->u.symbol_ref->name);
+    codegen_lvalue_addr(n);
+    load(n->ty);
     push("rax");
   }
 
   if (n->kind == NODE_ASSIGN) {
     codegen_expr(n->u.assign.rvalue);
     codegen_lvalue_addr(n->u.assign.lvalue);
-    pop("rdi"); // lvalue
-    pop("rax"); // rvalue
-    printf("  movq %%rax, (%%rdi)\n");
+    store();
     push("rax");
   }
 
@@ -155,8 +175,7 @@ codegen_expr(node* n)
 
   if (n->kind == NODE_DEREF) {
     codegen_expr(n->u.deref_value);
-    pop("rax");
-    printf("  movq (%%rax), %%rax\n");
+    load(n->ty);
     push("rax");
   }
 
