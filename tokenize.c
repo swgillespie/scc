@@ -254,6 +254,70 @@ tokenize(void)
           c++;
           cursor->next = make_token(TOKEN_CHAR_LITERAL, pos, c - pos);
           cursor->next->value = value;
+        } else if (*c == '"') {
+          char* pos = c;
+          c++;
+          char* contents;
+          size_t len;
+          FILE* stream = open_memstream(&contents, &len);
+          while (*c != '"') {
+            switch (*c) {
+              case '\\': {
+                c++;
+                switch (*c) {
+                  case '\'':
+                    fputc('\'', stream);
+                    break;
+                  case '\"':
+                    fputc('\"', stream);
+                    break;
+                  case '\?':
+                    fputc('\?', stream);
+                    break;
+                  case '\\':
+                    fputc('\\', stream);
+                    break;
+                  case 'a':
+                    fputc('\a', stream);
+                    break;
+                  case 'b':
+                    fputc('\b', stream);
+                    break;
+                  case 'f':
+                    fputc('\f', stream);
+                    break;
+                  case 'n':
+                    fputc('\n', stream);
+                    break;
+                  case 'r':
+                    fputc('\r', stream);
+                    break;
+                  case 't':
+                    fputc('\t', stream);
+                    break;
+                  case 'v':
+                    fputc('\v', stream);
+                    break;
+                  default:
+                    error_at(cursor, "unrecognized escape sequence");
+                }
+              }
+
+              break;
+              default:
+                fputc(*c, stream);
+                break;
+            }
+
+            c++;
+          }
+
+          c++;
+          fputc('\0', stream);
+          fflush(stream);
+          fclose(stream);
+          cursor->next = make_token(TOKEN_STRING_LITERAL, pos, c - pos);
+          cursor->next->string_value = contents;
         } else {
           error_at(make_token(TOKEN_ERROR, c, 1), "unrecognized character");
         }

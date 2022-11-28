@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
-
 /**
  * tokenize.c - C source tokenizer
  */
@@ -29,6 +27,7 @@ typedef enum
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
+  TOKEN_STRING_LITERAL,
   TOKEN_LPAREN,
   TOKEN_RPAREN,
   TOKEN_LBRACE,
@@ -61,6 +60,7 @@ typedef struct token
   char* pos;
   size_t len;
   int value;
+  char* string_value;
 } token;
 
 void
@@ -201,7 +201,9 @@ typedef struct node
 
 typedef enum symbol_kind
 {
+  SYMBOL_EMPTY,
   SYMBOL_LOCAL_VAR,
+  SYMBOL_GLOBAL_VAR,
   SYMBOL_FUNCTION,
 } symbol_kind;
 
@@ -230,6 +232,11 @@ typedef struct symbol
       struct symbol* locals;
       struct node* body;
     } function;
+
+    /**
+     * For SYMBOL_GLOBAL_VAR, the data of the global.
+     */
+    char* global_data;
   } u;
 } symbol;
 

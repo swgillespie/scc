@@ -34,6 +34,17 @@ make_symbol_function(token* tok, type* ty)
   return s;
 }
 
+static symbol*
+make_symbol_global(token* tok, type* ty, char* name)
+{
+  symbol* s = malloc(sizeof(symbol));
+  s->tok = tok;
+  s->name = name;
+  s->kind = SYMBOL_GLOBAL_VAR;
+  s->ty = ty;
+  return s;
+}
+
 static node*
 make_node_const(token* tok, type* ty, int value)
 {
@@ -43,6 +54,28 @@ make_node_const(token* tok, type* ty, int value)
   n->tok = tok;
   n->u.const_value = value;
   return n;
+}
+
+static node*
+make_symbol_ref(token* tok, symbol* sym);
+
+static node*
+make_string_literal(token* tok)
+{
+  static int counter = 0;
+
+  char symbol_name_buf[4096];
+  memset(symbol_name_buf, 1, 4096);
+
+  char* contents = tok->string_value;
+  size_t len = strlen(contents);
+  type* ty = make_array_type(ty_char, len);
+  snprintf(symbol_name_buf, 4096, ".L.str.%d", counter++);
+  symbol* sym = make_symbol_global(tok, ty, symbol_name_buf);
+  sym->u.global_data = contents;
+  symbols = symbols->next = sym;
+  // TODO - deduplicate string literals
+  return make_symbol_ref(tok, sym);
 }
 
 static node*
@@ -797,7 +830,7 @@ primary(token** cursor)
   if (peek(cursor, TOKEN_IDENT)) {
     token* name = eat(cursor, TOKEN_IDENT);
 
-    // Local variables
+    // Local variable8
     for (symbol* sym = current_function->u.function.locals; sym;
          sym = sym->next) {
       if (strncmp(name->pos, sym->name, name->len) == 0) {
@@ -806,7 +839,8 @@ primary(token** cursor)
     }
 
     // Global variables
-    for (symbol* sym = symbols; sym; sym = sym->next) {
+    for (symbol* sym = symbols; sym && sym->kind != SYMBOL_EMPTY;
+         sym = sym->next) {
       if (strncmp(name->pos, sym->name, name->len) == 0) {
         return make_symbol_ref(name, sym);
       }
@@ -824,6 +858,11 @@ primary(token** cursor)
   if (peek(cursor, TOKEN_CHAR_LITERAL)) {
     token* char_lit = eat(cursor, TOKEN_CHAR_LITERAL);
     return make_node_const(char_lit, ty_int, char_lit->value);
+  }
+
+  if (peek(cursor, TOKEN_STRING_LITERAL)) {
+    token* str_lit = eat(cursor, TOKEN_STRING_LITERAL);
+    return make_string_literal(str_lit);
   }
 
   token* integer = eat(cursor, TOKEN_INTEGER);

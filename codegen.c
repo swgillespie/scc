@@ -70,9 +70,13 @@ codegen_lvalue_addr(node* n)
         error_at(n->tok, "unbound identifier");
       }
 
-      printf("  lea %d(%%rbp), %%rax # symbol ref lvalue `%s`\n",
-             n->u.symbol_ref->u.frame_offset,
-             n->u.symbol_ref->name);
+      if (n->u.symbol_ref->kind == SYMBOL_GLOBAL_VAR) {
+        printf("  lea %s(%%rip), %%rax\n", n->u.symbol_ref->name);
+      } else {
+        printf("  lea %d(%%rbp), %%rax # symbol ref lvalue `%s`\n",
+               n->u.symbol_ref->u.frame_offset,
+               n->u.symbol_ref->name);
+      }
       push("rax");
       break;
     case NODE_DEREF:
@@ -275,7 +279,7 @@ calculate_frame_layout(symbol* func)
 }
 
 static void
-codegen_symbol(symbol* sym)
+codegen_function(symbol* sym)
 {
   int offset = calculate_frame_layout(sym);
   printf(".globl %s\n", sym->name);
@@ -291,10 +295,36 @@ codegen_symbol(symbol* sym)
   printf("  ret\n");
 }
 
+static void
+codegen_global(symbol* sym)
+{
+  // technically this only really works for string literals, but we'll get there
+  // when we get there
+  char* data = sym->u.global_data;
+  printf("%s:\n", sym->name);
+  for (size_t i = 0; i < strlen(data); i++) {
+    printf("  .byte 0x%x\n", data[i]);
+  }
+
+  printf("  .byte 0x00\n");
+}
+
 void
 codegen(symbol* symbols)
 {
   for (symbol* sym = symbols; sym; sym = sym->next) {
-    codegen_symbol(sym);
+    switch (sym->kind) {
+      case SYMBOL_FUNCTION:
+        codegen_function(sym);
+        break;
+      case SYMBOL_GLOBAL_VAR:
+        codegen_global(sym);
+        break;
+      case SYMBOL_LOCAL_VAR:
+        ice_at(sym->tok, "local variable in global symbols list?");
+        break;
+      case SYMBOL_EMPTY:
+        break;
+    }
   }
 }
