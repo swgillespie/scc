@@ -287,6 +287,42 @@ static node*
 unary_expr(token**);
 
 /**
+ * 6.7.7 - Type names
+ *
+ * type_name = specifier_qualifier_list abstract_declarator?
+ *
+ * specifier_qualifier_list = (type_specifier | type_qualifier)*
+ * type_specifier = (void | char | int)
+ * type_qualifier = epsilon
+ *
+ * abstract_declarator = "*"+
+ *
+ * We're not getting into abstract declarators yet, since those get wild.
+ */
+static type*
+decl_type_name(token** cursor)
+{
+  type* decltype;
+  if (equal(cursor, TOKEN_INT)) {
+    decltype = ty_int;
+  } else if (equal(cursor, TOKEN_CHAR)) {
+    decltype = ty_char;
+  }
+
+  while (equal(cursor, TOKEN_STAR)) {
+    decltype = make_pointer_type(decltype);
+  }
+
+  return decltype;
+}
+
+static int
+can_start_type_name(token** cursor)
+{
+  return peek(cursor, TOKEN_CHAR) || peek(cursor, TOKEN_INT);
+}
+
+/**
  * stmt = return_stmt | declaration | expr SEMI | compound_statement |
  * if_statement | for_statement | while_statement
  */
@@ -297,7 +333,7 @@ stmt(token** cursor)
     return return_stmt(cursor);
   }
 
-  if (peek(cursor, TOKEN_INT)) {
+  if (can_start_type_name(cursor)) {
     return declaration(cursor);
   }
 
@@ -362,12 +398,7 @@ expr_stmt(token** cursor)
 static node*
 declaration(token** cursor)
 {
-  eat(cursor, TOKEN_INT);
-  type* decltype = ty_int;
-  while (equal(cursor, TOKEN_STAR)) {
-    decltype = make_pointer_type(decltype);
-  }
-
+  type* decltype = decl_type_name(cursor);
   token* ident = eat(cursor, TOKEN_IDENT);
   if (equal(cursor, TOKEN_LBRACKET)) {
     // C is ridiculously permissive with what it accepts as an array length
@@ -452,7 +483,7 @@ for_stmt(token** cursor)
   // Declarations are technically not statements, but C11 makes an exception
   // and allows for statements to contain one decl in the initializer stanza.
   // TODO: this should be any token in the first set of a decl
-  if (peek(cursor, TOKEN_INT)) {
+  if (can_start_type_name(cursor)) {
     initializer = declaration(cursor);
   } else {
     initializer = expr_stmt(cursor);

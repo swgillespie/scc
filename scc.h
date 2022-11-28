@@ -18,6 +18,7 @@ typedef enum
   TOKEN_ERROR,
   // Probably not real tokens, these are identifiers?
   TOKEN_INT,
+  TOKEN_CHAR,
   TOKEN_MAIN,
   // Reserved words
   TOKEN_IF,
@@ -74,6 +75,7 @@ tokenize(void);
 typedef enum type_kind
 {
   TYPE_INT,
+  TYPE_CHAR,
   TYPE_POINTER,
   TYPE_VOID,
   TYPE_ARRAY,
@@ -100,6 +102,7 @@ typedef struct type
 
 extern type* ty_int;
 extern type* ty_void;
+extern type* ty_char;
 
 type*
 make_pointer_type(type* base);

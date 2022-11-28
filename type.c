@@ -3,6 +3,7 @@
 /* this lies and says that sizeof(int) is 8, we will fix this later. */
 type* ty_int = &(type){ .kind = TYPE_INT, .base = NULL, .size = 8 };
 type* ty_void = &(type){ .kind = TYPE_VOID, .base = NULL, .size = 0 };
+type* ty_char = &(type){ .kind = TYPE_CHAR, .base = NULL, .size = 1 };
 
 type*
 make_pointer_type(type* base)
@@ -34,6 +35,9 @@ type_name_to_stream(type* ty, FILE* stream)
       return;
     case TYPE_INT:
       fputs("int", stream);
+      return;
+    case TYPE_CHAR:
+      fputs("char", stream);
       return;
     case TYPE_ARRAY:
       type_name_to_stream(ty->base, stream);
