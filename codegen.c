@@ -65,7 +65,17 @@ load(type* ty)
     return;
   }
 
-  printf("  mov (%%rax), %%rax\n");
+  switch (ty->size) {
+    case 4:
+      printf("  mov (%%rax), %%eax\n");
+      printf("  cltq\n");
+      break;
+    case 8:
+      printf("  mov (%%rax), %%rax\n");
+      break;
+    default:
+      ice_at(NULL, "unknown type size %d", ty->size);
+  }
 }
 
 /**
@@ -73,11 +83,22 @@ load(type* ty)
  * the lvalue address.
  */
 static void
-store(void)
+store(type* ty)
 {
   pop("rdi"); // lvalue
-  pop("rax"); // rvalue
-  printf("  mov %%rax, (%%rdi)\n");
+              // rvalue
+  switch (ty->size) {
+    case 4:
+      pop("rax");
+      printf("  mov %%eax, (%%rdi)\n");
+      break;
+    default:
+      // Values of size 8 and arrays (pointers or pointer-like integers)
+      // use all of rax.
+      pop("rax");
+      printf("  mov %%rax, (%%rdi)\n");
+      break;
+  }
 }
 
 void
@@ -195,7 +216,7 @@ codegen_expr(node* n)
   if (n->kind == NODE_ASSIGN) {
     codegen_expr(n->u.assign.rvalue);
     codegen_lvalue_addr(n->u.assign.lvalue);
-    store();
+    store(n->ty);
     push("rax");
   }
 

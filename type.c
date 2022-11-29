@@ -1,7 +1,7 @@
 #include "scc.h"
 
 /* this lies and says that sizeof(int) is 8, we will fix this later. */
-type* ty_int = &(type){ .kind = TYPE_INT, .base = NULL, .size = 8 };
+type* ty_int = &(type){ .kind = TYPE_INT, .base = NULL, .size = 4 };
 type* ty_void = &(type){ .kind = TYPE_VOID, .base = NULL, .size = 0 };
 type* ty_char = &(type){ .kind = TYPE_CHAR, .base = NULL, .size = 1 };
 
