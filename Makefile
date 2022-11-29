@@ -4,7 +4,7 @@ CFLAGS := --std=gnu11 -Wpedantic -Wall -Wextra -g
 SOURCES := main.c codegen.c parse.c tokenize.c type.c
 OBJECTS := $(SOURCES:.c=.o)
 
-TEST_SOURCES := $(shell find ./tests -name "*.c")
+TEST_SOURCES := $(shell find ./tests/run -name "*.c")
 TEST_EXES := $(basename $(TEST_SOURCES))
 
 scc: $(OBJECTS)
@@ -13,20 +13,22 @@ scc: $(OBJECTS)
 %.o: %.c scc.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-test: $(TEST_EXES)
+test-run: $(TEST_EXES)
 	for exe in $(TEST_EXES); do ./$$exe; done
 
-tests/helpers.o: tests/helpers.s
+test: test-run
+
+tests/run/helpers.o: tests/run/helpers.s
 	$(CC) -c -o $@ $<
 
-tests/%.preproc.c: tests/%.c
+tests/run/%.preproc.c: tests/run/%.c
 	$(CC) -E -P $< > $@
 
-tests/%.s: tests/%.preproc.c scc
+tests/run/%.s: tests/run/%.preproc.c scc
 	./scc $< > $@ 2> /dev/null
 
-tests/%: tests/%.s tests/helpers.o
-	$(CC) -static -o $@ $< tests/helpers.o
+tests/run/%: tests/run/%.s tests/run/helpers.o
+	$(CC) -static -o $@ $< tests/run/helpers.o
 
 clean:
 	rm -f $(OBJECTS)
