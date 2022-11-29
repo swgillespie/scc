@@ -1,3 +1,5 @@
 *.o
 scc
 scratch/
+.lit_test_times.txt
+Output/

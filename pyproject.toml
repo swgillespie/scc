@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "scc"
+version = "0.1.0"
+description = "Python utilities for testing scc"
+authors = ["Sean Gillespie <sean@swgillespie.me>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+lit = "^15.0.1"
+filecheck = "^0.0.22"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

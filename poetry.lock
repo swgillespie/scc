@@ -1,0 +1,29 @@
+[[package]]
+name = "filecheck"
+version = "0.0.22"
+description = "Python port of LLVM's FileCheck, flexible pattern matching file verifier"
+category = "main"
+optional = false
+python-versions = ">=3.6.2,<4.0"
+
+[[package]]
+name = "lit"
+version = "15.0.1"
+description = "A Software Testing Tool"
+category = "main"
+optional = false
+python-versions = "*"
+
+[metadata]
+lock-version = "1.1"
+python-versions = "^3.10"
+content-hash = "bc265b81be8c5ddffae5d5e23fdbecb88907929b7a9bf793c9c8d5d704d50d0b"
+
+[metadata.files]
+filecheck = [
+    {file = "filecheck-0.0.22-py3-none-any.whl", hash = "sha256:af46f6603f5b68d5c3834bfff8ef1324250baf0c10e61eb216c5ae51baa371c3"},
+    {file = "filecheck-0.0.22.tar.gz", hash = "sha256:01ee327b6b742ced2fd9e44319d2d706a4573e5e0ee7261938d0de16a77e5c06"},
+]
+lit = [
+    {file = "lit-15.0.1.tar.gz", hash = "sha256:84ae8245d4f4dcb4562d7b95b6fecd53a7b3562af1e348949ce8794969a3a9b6"},
+]
