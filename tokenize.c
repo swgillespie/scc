@@ -124,6 +124,30 @@ tokenize(void)
         c++;
         break;
       case '/':
+        if (*++c == '*') {
+          c++;
+          while (1) {
+            if (*c == '*') {
+              c++;
+              if (*c == '/') {
+                c++;
+                break;
+              }
+            } else {
+              c++;
+            }
+          }
+
+          continue;
+        }
+
+        if (*c == '/') {
+          c++;
+          while (*++c != '\n')
+            ;
+
+          continue;
+        }
         cursor->next = make_token(TOKEN_SLASH, c, 1);
         c++;
         break;
