@@ -741,7 +741,7 @@ unary_expr(token** cursor)
   if (equal(cursor, TOKEN_AMPERSAND)) {
     node* base = unary_expr(cursor);
     if (!is_lvalue(base)) {
-      error_at(unop_tok, "not an lvalue");
+      error_at(unop_tok, "not a lvalue");
     }
     return make_addrof(unop_tok, base);
   }

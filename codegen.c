@@ -109,7 +109,7 @@ codegen_lvalue_addr(node* n)
       codegen_expr(n->u.deref_value);
       break;
     default:
-      error_at(n->tok, "not an lvalue");
+      error_at(n->tok, "not a lvalue");
       break;
   }
 }

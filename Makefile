@@ -16,7 +16,10 @@ scc: $(OBJECTS)
 test-run: $(TEST_EXES)
 	for exe in $(TEST_EXES); do ./$$exe; done
 
-test: test-run
+test-compile: scc
+	poetry run lit tests/compile
+
+test: test-compile test-run
 
 tests/run/helpers.o: tests/run/helpers.s
 	$(CC) -c -o $@ $<
