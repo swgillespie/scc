@@ -33,11 +33,20 @@ pointers()
   return 0;
 }
 
+int global;
+
+int
+globals()
+{
+  int x = global;
+}
+
 int
 main()
 {
   arrays();
   pointers();
+  globals();
   puts("pointers ok");
   return 0;
 }

@@ -376,10 +376,17 @@ codegen_function(symbol* sym)
 static void
 codegen_global(symbol* sym)
 {
-  // technically this only really works for string literals, but we'll get there
-  // when we get there
+  if (sym->ty->size == 0) {
+    error_at(sym->tok, "storage size is not known");
+  }
+
   char* data = sym->u.global_data;
   printf("%s:\n", sym->name);
+  if (!data) {
+    printf("  .zero %d\n", sym->ty->size);
+    return;
+  }
+
   for (size_t i = 0; i < strlen(data); i++) {
     printf("  .byte 0x%x\n", data[i]);
   }

@@ -1039,7 +1039,12 @@ external_declaration(token** cursor)
     symbols = current_function;
   } else if (equal(cursor, TOKEN_SEMICOLON)) {
     // just a decl.
-    symbol* sym = make_symbol_function(decl, declspec);
+    symbol* sym;
+    if (declspec->kind == TYPE_FUNCTION) {
+      sym = make_symbol_function(decl, declspec);
+    } else {
+      sym = make_symbol_global(decl, declspec, strndup(decl->pos, decl->len));
+    }
     sym->next = symbols;
     symbols = sym;
   }
