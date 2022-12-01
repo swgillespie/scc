@@ -363,7 +363,9 @@ codegen_function(symbol* sym)
   }
 
   int offset = calculate_frame_layout(sym);
+  printf(".text\n");
   printf(".globl %s\n", sym->name);
+  printf(".type  %s, @function\n", sym->name);
   printf("%s:\n", sym->name);
   printf("  push %%rbp\n");
   printf("  movq %%rsp, %%rbp\n");
@@ -381,12 +383,15 @@ codegen_global(symbol* sym)
   }
 
   char* data = sym->u.global_data;
-  printf("%s:\n", sym->name);
   if (!data) {
+    printf(".bss\n");
+    printf("%s:\n", sym->name);
     printf("  .zero %d\n", sym->ty->size);
     return;
   }
 
+  printf(".section .rodata\n");
+  printf("%s:\n", sym->name);
   for (size_t i = 0; i < strlen(data); i++) {
     printf("  .byte 0x%x\n", data[i]);
   }

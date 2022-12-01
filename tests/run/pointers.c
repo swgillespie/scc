@@ -38,7 +38,10 @@ int global;
 int
 globals()
 {
-  int x = global;
+  global = 0;
+  ASSERT_EQ(global, 0);
+  global++;
+  ASSERT_EQ(global, 1);
 }
 
 int
