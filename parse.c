@@ -460,7 +460,7 @@ declaration(token** cursor)
 {
   type* decltype = decl_type_name(cursor);
   token* ident = eat(cursor, TOKEN_IDENT);
-  if (equal(cursor, TOKEN_LBRACKET)) {
+  while (equal(cursor, TOKEN_LBRACKET)) {
     // C is ridiculously permissive with what it accepts as an array length
     // initializer. We'll start with known constants.
     node* array_length = assignment_expr(cursor);
@@ -841,11 +841,12 @@ postfix_expr(token** cursor)
         // Quick constant-fold here to avoid generating really dumb code when
         // the subscript expr is trivially zero.
         if (subscript->kind == NODE_CONST && subscript->u.const_value == 0) {
-          return make_deref(candidate, base);
+          base = make_deref(candidate, base);
+        } else {
+          // Otherwise, *(e1 + e2)
+          base = make_deref(candidate, make_add(candidate, base, subscript));
         }
-
-        // Otherwise, *(e1 + e2)
-        return make_deref(candidate, make_add(candidate, base, subscript));
+        continue;
       }
 
       error_at(

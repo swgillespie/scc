@@ -24,6 +24,22 @@ arrays()
 }
 
 int
+multidim_arrays()
+{
+  int x[3][3];
+  x[0][1] = 1;
+  x[2][2] = 4;
+  ASSERT_EQ(x[0][1], 1);
+  ASSERT_EQ(x[2][2], 4);
+
+  int* p = x[1];
+  p[1] = 9;
+  ASSERT_EQ(x[1][1], 9);
+
+  return 0;
+}
+
+int
 pointers()
 {
   int x = 0;
@@ -50,6 +66,7 @@ main()
   arrays();
   pointers();
   globals();
+  multidim_arrays();
   puts("pointers ok");
   return 0;
 }
