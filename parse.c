@@ -816,6 +816,11 @@ postfix_expr(token** cursor)
         warn_at(base->tok, "implicit declaration of function `%s`", name);
       } else {
         name = base->u.symbol_ref->name;
+        if (base->u.symbol_ref->ty->kind != TYPE_FUNCTION) {
+          error_at(base->tok,
+                   "called object is not a function (has type `%s`)",
+                   type_name(base->u.symbol_ref->ty));
+        }
       }
 
       return make_call(candidate, name, arg_head.next);
