@@ -66,6 +66,10 @@ load(type* ty)
   }
 
   switch (ty->size) {
+    case 1:
+      printf("  movzbl (%%rax), %%eax\n");
+      printf("  cltq\n");
+      break;
     case 4:
       printf("  mov (%%rax), %%eax\n");
       printf("  cltq\n");
@@ -88,6 +92,10 @@ store(type* ty)
   pop("rdi"); // lvalue
               // rvalue
   switch (ty->size) {
+    case 1:
+      pop("rax");
+      printf("  movb %%al, (%%rdi)\n");
+      break;
     case 4:
       pop("rax");
       printf("  mov %%eax, (%%rdi)\n");

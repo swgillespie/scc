@@ -20,6 +20,13 @@ main()
   ASSERT_EQ((1 + 1) * 2, 4);
   ASSERT_EQ('x', 120);
   ASSERT_EQ('\n', 10);
+
+  _Bool t = 1;
+  _Bool f = 0;
+  ASSERT_EQ(t, 1);
+  ASSERT_EQ(f, 0);
+  f = 1;
+  ASSERT_EQ(f, 1);
   puts("arith ok");
   return 0;
 }

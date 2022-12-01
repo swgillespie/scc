@@ -25,6 +25,7 @@ typedef enum
   TOKEN_FOR,
   TOKEN_WHILE,
   TOKEN_SIZEOF,
+  TOKEN_BOOL,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
@@ -78,6 +79,7 @@ typedef enum type_kind
 {
   TYPE_INT,
   TYPE_CHAR,
+  TYPE_BOOL,
   TYPE_POINTER,
   TYPE_VOID,
   TYPE_ARRAY,
@@ -105,6 +107,7 @@ typedef struct type
 extern type* ty_int;
 extern type* ty_void;
 extern type* ty_char;
+extern type* ty_bool;
 
 type*
 make_pointer_type(type* base);

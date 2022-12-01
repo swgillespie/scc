@@ -361,6 +361,8 @@ decl_type_name(token** cursor)
     decltype = ty_int;
   } else if (equal(cursor, TOKEN_CHAR)) {
     decltype = ty_char;
+  } else if (equal(cursor, TOKEN_BOOL)) {
+    decltype = ty_bool;
   }
 
   while (equal(cursor, TOKEN_STAR)) {
@@ -373,7 +375,8 @@ decl_type_name(token** cursor)
 static int
 can_start_type_name(token** cursor)
 {
-  return peek(cursor, TOKEN_CHAR) || peek(cursor, TOKEN_INT);
+  return peek(cursor, TOKEN_CHAR) || peek(cursor, TOKEN_INT) ||
+         peek(cursor, TOKEN_BOOL);
 }
 
 /**

@@ -16,7 +16,7 @@ static keyword keywords[] = {
   { "if", TOKEN_IF, 2 },         { "else", TOKEN_ELSE, 4 },
   { "for", TOKEN_FOR, 3 },       { "while", TOKEN_WHILE, 5 },
   { "sizeof", TOKEN_SIZEOF, 6 }, { "char", TOKEN_CHAR, 4 },
-  { "do", TOKEN_DO, 2 }
+  { "do", TOKEN_DO, 2 },         { "_Bool", TOKEN_BOOL, 5 }
 };
 
 void
@@ -191,7 +191,7 @@ tokenize(void)
         c++;
         break;
       default:
-        if (isalpha(*c)) {
+        if (isalpha(*c) || *c == '_') {
           size_t len = 0;
           while (isalnum(*c) || *c == '_') {
             c++;
