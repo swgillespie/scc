@@ -10,6 +10,31 @@ static symbol* current_function;
  */
 static symbol* symbols;
 
+/**
+ * 0 if we are not in a loop or breakable expr (switch), >1 if we are. Used for
+ * detecting if a "break" or "continue" is valid.
+ */
+static int loop_depth;
+
+static void
+push_loop(void)
+{
+  loop_depth++;
+}
+
+static void
+pop_loop(void)
+{
+  SCC_ASSERT(NULL, loop_depth > 0, "pop_loop outside of loop");
+  loop_depth--;
+}
+
+static int
+in_loop(void)
+{
+  return loop_depth > 0;
+}
+
 static symbol*
 make_symbol_local(token* tok, type* ty)
 {
@@ -235,6 +260,20 @@ make_do_stmt(token* tok, node* body, node* cond)
 }
 
 static node*
+make_break_stmt(token* tok)
+{
+  if (!in_loop()) {
+    error_at(tok, "break outside of loop or switch");
+  }
+
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_BREAK;
+  n->tok = tok;
+  n->ty = ty_void;
+  return n;
+}
+
+static node*
 make_deref(token* tok, node* base)
 {
   node* n = malloc(sizeof(node));
@@ -413,6 +452,12 @@ stmt(token** cursor)
     return do_stmt(cursor);
   }
 
+  if (peek(cursor, TOKEN_BREAK)) {
+    token* break_tok = eat(cursor, TOKEN_BREAK);
+    eat(cursor, TOKEN_SEMICOLON);
+    return make_break_stmt(break_tok);
+  }
+
   node* e = expr(cursor);
   token* semi_tok = eat(cursor, TOKEN_SEMICOLON);
   return make_expr_stmt(semi_tok, e);
@@ -556,7 +601,9 @@ for_stmt(token** cursor)
   }
 
   eat(cursor, TOKEN_RPAREN);
+  push_loop();
   node* body = stmt(cursor);
+  pop_loop();
   return make_for_stmt(for_tok, initializer, cond, next, body);
 }
 
@@ -571,7 +618,9 @@ while_stmt(token** cursor)
   eat(cursor, TOKEN_LPAREN);
   node* cond = expr(cursor);
   eat(cursor, TOKEN_RPAREN);
+  push_loop();
   node* body = stmt(cursor);
+  pop_loop();
   return make_for_stmt(while_tok, NULL, cond, NULL, body);
 }
 
@@ -583,7 +632,9 @@ static node*
 do_stmt(token** cursor)
 {
   token* do_tok = eat(cursor, TOKEN_DO);
+  push_loop();
   node* body = stmt(cursor);
+  pop_loop();
   eat(cursor, TOKEN_WHILE);
   eat(cursor, TOKEN_LPAREN);
   node* cond = expr(cursor);

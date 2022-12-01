@@ -75,6 +75,26 @@ loops()
     q++;
   } while (q < 5);
   ASSERT_EQ(q, 5);
+
+  int m = 0;
+  for (int i = 0; i < 10; i++) {
+    break;
+    m++;
+  }
+
+  ASSERT_EQ(m, 0);
+
+  int t = 0;
+  for (int i = 0; i < 5; i++) {
+    for (int j = 0; j < i; j++) {
+      break;
+      t++;
+    }
+
+    t++;
+  }
+
+  ASSERT_EQ(t, 5);
 }
 
 int

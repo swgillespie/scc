@@ -1,15 +1,56 @@
 #include "scc.h"
 
+#define MAX_LOOP_DEPTH 25
+
 static const char* argument_regs[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
 /** for debugging purposes, the current depth of the value stack */
 static int depth;
+
+/**
+ * Stack of labels that break statements jump to, when codegen-ing loops.
+ */
+static char* break_stack[MAX_LOOP_DEPTH];
+static int break_stack_len = 0;
+
+static void
+push_break(char* label)
+{
+  SCC_ASSERT(NULL, break_stack_len < MAX_LOOP_DEPTH, "break stack overflow");
+  break_stack[break_stack_len++] = label;
+}
+
+static void
+pop_break(void)
+{
+  SCC_ASSERT(NULL, break_stack_len > 0, "pop from empty break stack");
+  break_stack_len--;
+}
+
+static char*
+break_target(void)
+{
+  SCC_ASSERT(NULL, break_stack_len > 0, "not in loop for break");
+  return break_stack[break_stack_len - 1];
+}
 
 static int
 gen_label()
 {
   static int count = 0;
   return count++;
+}
+
+static char*
+gen_label_name(char* prefix, int count)
+{
+  char* name;
+  size_t len;
+  FILE* stream = open_memstream(&name, &len);
+  fprintf(stream, "%s.%d", prefix, count);
+  fflush(stream);
+  fclose(stream);
+  return name;
 }
 
 static void
@@ -301,36 +342,47 @@ codegen_stmt(node* base)
       }
       case NODE_FOR: {
         int label_count = gen_label();
+        char* header = gen_label_name(".L.for.header", label_count);
+        char* end = gen_label_name(".L.for.end", label_count);
         if (n->u.for_.initializer) {
           codegen_stmt(n->u.for_.initializer);
         }
-        printf(".L.for.header.%d:\n", label_count);
+        printf("%s:\n", header);
         if (n->u.for_.cond) {
           codegen_expr(n->u.for_.cond);
           pop("rax");
           printf("  cmp $0, %%rax\n");
-          printf("  je .L.for.end.%d\n", label_count);
+          printf("  je %s\n", end);
         }
+        push_break(end);
         codegen_stmt(n->u.for_.body);
+        pop_break();
         if (n->u.for_.next) {
           codegen_expr(n->u.for_.next);
           pop_void();
         }
-        printf("  jmp .L.for.header.%d\n", label_count);
-        printf(".L.for.end.%d:\n", label_count);
+        printf("  jmp %s\n", header);
+        printf("%s:\n", end);
         break;
       }
       case NODE_DO: {
         int label_count = gen_label();
-        printf(".L.do.body.%d:\n", label_count);
+        char* header = gen_label_name(".L.do.body", label_count);
+        char* end = gen_label_name(".L.do.end", label_count);
+        printf("%s:\n", header);
+        push_break(end);
         codegen_stmt(n->u.do_.body);
+        pop_break();
         codegen_expr(n->u.do_.cond);
         pop("rax");
         printf("  cmp $0, %%rax\n");
         printf("  jne .L.do.body.%d\n", label_count);
+        printf("%s:\n", end);
         break;
       }
-
+      case NODE_BREAK:
+        printf("  jmp %s\n", break_target());
+        break;
       default:
         break;
     }

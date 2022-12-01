@@ -26,6 +26,7 @@ typedef enum
   TOKEN_WHILE,
   TOKEN_SIZEOF,
   TOKEN_BOOL,
+  TOKEN_BREAK,
   TOKEN_VOID,
   // These are real tokens.
   TOKEN_IDENT,
@@ -142,6 +143,7 @@ typedef enum node_kind
   NODE_ADDROF,
   NODE_DEREF,
   NODE_CALL,
+  NODE_BREAK,
   /* Control flow */
   NODE_IF,
   /* TODO: it's probably possible to unify the two loop nodes */
