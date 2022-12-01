@@ -15,6 +15,7 @@ make_symbol_local(token* tok, type* ty)
 {
   symbol* s = malloc(sizeof(symbol));
   s->tok = tok;
+  s->linkage = LINKAGE_NONE;
   s->name = strndup(tok->pos, tok->len);
   s->kind = SYMBOL_LOCAL_VAR;
   s->ty = ty;
@@ -28,6 +29,7 @@ make_symbol_function(token* tok, type* ty)
 {
   symbol* s = malloc(sizeof(symbol));
   s->tok = tok;
+  s->linkage = LINKAGE_EXTERNAL;
   s->name = strndup(tok->pos, tok->len);
   s->kind = SYMBOL_FUNCTION;
   s->ty = ty;
@@ -39,6 +41,7 @@ make_symbol_global(token* tok, type* ty, char* name)
 {
   symbol* s = malloc(sizeof(symbol));
   s->tok = tok;
+  s->linkage = LINKAGE_INTERNAL;
   s->name = name;
   s->kind = SYMBOL_GLOBAL_VAR;
   s->ty = ty;
@@ -73,7 +76,8 @@ make_string_literal(token* tok)
   snprintf(symbol_name_buf, 4096, ".L.str.%d", counter++);
   symbol* sym = make_symbol_global(tok, ty, strdup(symbol_name_buf));
   sym->u.global_data = contents;
-  symbols = symbols->next = sym;
+  sym->next = symbols;
+  symbols = sym;
   // TODO - deduplicate string literals
   return make_symbol_ref(tok, sym);
 }
@@ -371,7 +375,7 @@ static int
 can_start_type_name(token** cursor)
 {
   return peek(cursor, TOKEN_CHAR) || peek(cursor, TOKEN_INT) ||
-         peek(cursor, TOKEN_BOOL);
+         peek(cursor, TOKEN_BOOL) || peek(cursor, TOKEN_VOID);
 }
 
 /**
@@ -865,7 +869,7 @@ primary(token** cursor)
   if (peek(cursor, TOKEN_IDENT)) {
     token* name = eat(cursor, TOKEN_IDENT);
 
-    // Local variable8
+    // Local variable
     for (symbol* sym = current_function->u.function.locals; sym;
          sym = sym->next) {
       if (strncmp(name->pos, sym->name, name->len) == 0) {
@@ -904,24 +908,37 @@ primary(token** cursor)
   return make_node_const(integer, ty_int, integer->value);
 }
 
-static void
-parse_function(token** cursor)
+/**
+ * declarator ::=
+ *  pointer? direct-declarator
+ *
+ * direct-declarator ::=
+ *  identifier
+ *  direct-declarator "(" ")"
+ */
+static token*
+declarator(token** cursor, type** base)
 {
-  eat(cursor, TOKEN_INT);
-  token* name = eat(cursor, TOKEN_IDENT);
-  current_function =
-    make_symbol_function(name, ty_void /* should be a function type */);
-  eat(cursor, TOKEN_LPAREN);
-  eat(cursor, TOKEN_RPAREN);
-  eat(cursor, TOKEN_LBRACE);
-  node head = { 0 };
-  node* n = &head;
-  while ((*cursor)->kind != TOKEN_RBRACE) {
-    n = n->next = stmt(cursor);
+  while (equal(cursor, TOKEN_STAR)) {
+    *base = make_pointer_type(*base);
   }
-  eat(cursor, TOKEN_RBRACE);
-  current_function->u.function.body = head.next;
-  symbols = symbols->next = current_function;
+
+  token* ident = eat(cursor, TOKEN_IDENT);
+  for (;;) {
+    if (equal(cursor, TOKEN_LPAREN)) {
+      if ((*base)->kind == TYPE_FUNCTION) {
+        error_at(*cursor,
+                 "declaration declares a function that returns a function");
+      }
+      eat(cursor, TOKEN_RPAREN);
+      *base = make_function_type(*base);
+      continue;
+    }
+
+    break;
+  }
+
+  return ident;
 }
 
 /*
@@ -965,21 +982,70 @@ declaration_specifiers(token** cursor)
       continue;
     }
 
+    if (equal(cursor, TOKEN_VOID)) {
+      if (type_spec)
+        error_at(*cursor, "two or more data types in declaration specifier");
+      type_spec = ty_void;
+    }
+
     break;
   }
 
+  SCC_ASSERT(
+    *cursor, type_spec != NULL, "type spec was null after parsing declspec");
   return type_spec;
+}
+
+/**
+ *
+ * external-declaration ::=
+ *	function-definition
+ *  declaration
+ *
+ * function-definition ::=
+ *  declaration-specifiers declarator declaration-list? compound-statement
+ *
+ * declaration ::=
+ *  declaration-specifiers init-declarator-list? ";"
+ *
+ * init-declarator-list ::= init-declarator
+ * init-declarator ::= declarator ("=" initializer)?
+ * initializer ::= assignment-expression
+ *
+ * For now, we only support a single decl in the init-declarator-list, for
+ * simplicity.
+ */
+static void
+external_declaration(token** cursor)
+{
+  type* declspec = declaration_specifiers(cursor);
+  token* decl = declarator(cursor, &declspec);
+  if (equal(cursor, TOKEN_EQUAL)) {
+    error_at(*cursor, "nyi: global decl initializers");
+  }
+
+  if (peek(cursor, TOKEN_LBRACE)) {
+    // This is a function definition.
+    current_function = make_symbol_function(decl, declspec);
+    current_function->linkage = LINKAGE_INTERNAL;
+    node* body = compound_stmt(cursor);
+    current_function->u.function.body = body;
+    current_function->next = symbols;
+    symbols = current_function;
+  } else if (equal(cursor, TOKEN_SEMICOLON)) {
+    // just a decl.
+    symbol* sym = make_symbol_function(decl, declspec);
+    sym->next = symbols;
+    symbols = sym;
+  }
 }
 
 symbol*
 parse(token** cursor)
 {
-  symbol head = { 0 };
-  symbols = &head;
-
   while (!equal(cursor, TOKEN_EOF)) {
-    parse_function(cursor);
+    external_declaration(cursor);
   }
 
-  return head.next;
+  return symbols;
 }

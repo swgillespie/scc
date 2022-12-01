@@ -16,7 +16,8 @@ static keyword keywords[] = {
   { "if", TOKEN_IF, 2 },         { "else", TOKEN_ELSE, 4 },
   { "for", TOKEN_FOR, 3 },       { "while", TOKEN_WHILE, 5 },
   { "sizeof", TOKEN_SIZEOF, 6 }, { "char", TOKEN_CHAR, 4 },
-  { "do", TOKEN_DO, 2 },         { "_Bool", TOKEN_BOOL, 5 }
+  { "do", TOKEN_DO, 2 },         { "_Bool", TOKEN_BOOL, 5 },
+  { "void", TOKEN_VOID, 4 }
 };
 
 void

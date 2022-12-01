@@ -344,6 +344,10 @@ calculate_frame_layout(symbol* func)
 {
   int offset = 0;
   for (symbol* sym = func->u.function.locals; sym; sym = sym->next) {
+    if (sym->ty->size == 0) {
+      error_at(sym->tok, "storage size is not known");
+    }
+
     offset -= sym->ty->size;
     sym->u.frame_offset = offset;
   }
@@ -354,6 +358,10 @@ calculate_frame_layout(symbol* func)
 static void
 codegen_function(symbol* sym)
 {
+  if (sym->linkage == LINKAGE_EXTERNAL) {
+    return;
+  }
+
   int offset = calculate_frame_layout(sym);
   printf(".globl %s\n", sym->name);
   printf("%s:\n", sym->name);

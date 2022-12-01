@@ -28,7 +28,7 @@ tests/run/%.preproc.c: tests/run/%.c
 	$(CC) -E -P $< > $@
 
 tests/run/%.s: tests/run/%.preproc.c scc
-	./scc $< > $@ 2> /dev/null
+	./scc $< > $@
 
 tests/run/%: tests/run/%.s tests/run/helpers.o
 	$(CC) -static -o $@ $< tests/run/helpers.o

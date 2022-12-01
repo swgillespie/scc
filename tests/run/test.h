@@ -1,6 +1,21 @@
 #ifndef __TEST_H__
 #define __TEST_H__
 
+int
+returns_argument();
+int
+adds_arguments();
+int
+adds_six_arguments();
+int
+puts();
+int
+strlen();
+void
+printf();
+void
+abort();
+
 #define ASSERT_EQ(actual, expected)                                            \
   do {                                                                         \
     if ((expected) != (actual)) {                                              \

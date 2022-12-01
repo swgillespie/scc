@@ -27,6 +27,15 @@ make_array_type(type* base, int len)
   return t;
 }
 
+type*
+make_function_type(type* ret)
+{
+  type* t = malloc(sizeof(type));
+  t->kind = TYPE_FUNCTION;
+  t->ret = ret;
+  return t;
+}
+
 static void
 type_name_to_stream(type* ty, FILE* stream)
 {
@@ -42,6 +51,10 @@ type_name_to_stream(type* ty, FILE* stream)
       return;
     case TYPE_BOOL:
       fputs("_Bool", stream);
+      return;
+    case TYPE_FUNCTION:
+      type_name_to_stream(ty->ret, stream);
+      fprintf(stream, "()");
       return;
     case TYPE_ARRAY:
       type_name_to_stream(ty->base, stream);

@@ -26,6 +26,7 @@ typedef enum
   TOKEN_WHILE,
   TOKEN_SIZEOF,
   TOKEN_BOOL,
+  TOKEN_VOID,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
@@ -82,6 +83,7 @@ typedef enum type_kind
   TYPE_BOOL,
   TYPE_POINTER,
   TYPE_VOID,
+  TYPE_FUNCTION,
   TYPE_ARRAY,
 } type_kind;
 
@@ -102,6 +104,11 @@ typedef struct type
    * The size of this type, e.g. what sizeof returns.
    */
   int size;
+
+  /**
+   * If TYPE_FUNCTION, the return type of the function.
+   */
+  struct type* ret;
 } type;
 
 extern type* ty_int;
@@ -114,6 +121,9 @@ make_pointer_type(type* base);
 
 type*
 make_array_type(type* base, int len);
+
+type*
+make_function_type(type* ret);
 
 char*
 type_name(type* ty);
@@ -210,6 +220,13 @@ typedef struct node
   } u;
 } node;
 
+typedef enum linkage
+{
+  LINKAGE_NONE,
+  LINKAGE_EXTERNAL,
+  LINKAGE_INTERNAL,
+} linkage;
+
 typedef enum symbol_kind
 {
   SYMBOL_EMPTY,
@@ -228,6 +245,7 @@ typedef struct symbol
   char* name;
   token* tok;
   type* ty;
+  linkage linkage;
   union
   {
     /**
