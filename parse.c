@@ -340,6 +340,9 @@ do_stmt(token**);
 static node*
 unary_expr(token**);
 
+static type*
+declaration_specifiers(token**);
+
 /**
  * 6.7.7 - Type names
  *
@@ -356,15 +359,7 @@ unary_expr(token**);
 static type*
 decl_type_name(token** cursor)
 {
-  type* decltype;
-  if (equal(cursor, TOKEN_INT)) {
-    decltype = ty_int;
-  } else if (equal(cursor, TOKEN_CHAR)) {
-    decltype = ty_char;
-  } else if (equal(cursor, TOKEN_BOOL)) {
-    decltype = ty_bool;
-  }
-
+  type* decltype = declaration_specifiers(cursor);
   while (equal(cursor, TOKEN_STAR)) {
     decltype = make_pointer_type(decltype);
   }
@@ -927,6 +922,53 @@ parse_function(token** cursor)
   eat(cursor, TOKEN_RBRACE);
   current_function->u.function.body = head.next;
   symbols = symbols->next = current_function;
+}
+
+/*
+ * declaration-specifiers ::=
+ *	storage-class-specifier declaration-specifiers?
+ *	type-specifier declaration-specifiers?
+ *	type-qualifier declaration-specifiers?
+ *	function-specifier declaration-specifiers?
+ *
+ * storage-class-specifier ::= epsilon
+ * type-specifier ::=
+ *   "int"
+ *   "char"
+ *   "_Bool"
+ * type-qualifier ::= epsilon
+ * function-specifier ::= epsilon
+ */
+static type*
+declaration_specifiers(token** cursor)
+{
+  type* type_spec = NULL;
+  for (;;) {
+    if (equal(cursor, TOKEN_INT)) {
+      if (type_spec)
+        error_at(*cursor, "two or more data types in declaration specifier");
+      type_spec = ty_int;
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_CHAR)) {
+      if (type_spec)
+        error_at(*cursor, "two or more data types in declaration specifier");
+      type_spec = ty_char;
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_BOOL)) {
+      if (type_spec)
+        error_at(*cursor, "two or more data types in declaration specifier");
+      type_spec = ty_bool;
+      continue;
+    }
+
+    break;
+  }
+
+  return type_spec;
 }
 
 symbol*
