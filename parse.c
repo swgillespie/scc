@@ -966,7 +966,8 @@ primary(token** cursor)
     // Local variable
     for (symbol* sym = current_function->u.function.locals; sym;
          sym = sym->next) {
-      if (strncmp(name->pos, sym->name, name->len) == 0) {
+      if (strncmp(name->pos, sym->name, name->len) == 0 &&
+          name->len == strlen(sym->name)) {
         return make_symbol_ref(name, sym);
       }
     }
@@ -974,7 +975,8 @@ primary(token** cursor)
     // Global variables
     for (symbol* sym = symbols; sym && sym->kind != SYMBOL_EMPTY;
          sym = sym->next) {
-      if (strncmp(name->pos, sym->name, name->len) == 0) {
+      if (strncmp(name->pos, sym->name, name->len) == 0 &&
+          name->len == strlen(sym->name)) {
         return make_symbol_ref(name, sym);
       }
     }
