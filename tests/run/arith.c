@@ -1,6 +1,13 @@
 #include "test.h"
 
 int
+aborts()
+{
+  abort();
+  return 0;
+}
+
+int
 main()
 {
   ASSERT_EQ(1 + 1, 2);
@@ -20,6 +27,10 @@ main()
   ASSERT_EQ((1 + 1) * 2, 4);
   ASSERT_EQ('x', 120);
   ASSERT_EQ('\n', 10);
+  ASSERT_EQ(0 && aborts(), 0);
+  ASSERT_EQ(0 && 5, 0);
+  ASSERT_EQ(5 && 0, 0);
+  ASSERT_EQ(5 && 5, 1);
 
   _Bool t = 1;
   _Bool f = 0;

@@ -184,8 +184,13 @@ tokenize(void)
 
         break;
       case '&':
-        cursor->next = make_token(TOKEN_AMPERSAND, c, 1);
-        c++;
+        if (*++c == '&') {
+          cursor->next = make_token(TOKEN_DOUBLE_AMPERSAND, c - 1, 2);
+          c++;
+        } else {
+          cursor->next = make_token(TOKEN_AMPERSAND, c, 1);
+        }
+
         break;
       case ',':
         cursor->next = make_token(TOKEN_COMMA, c, 1);

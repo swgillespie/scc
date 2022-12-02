@@ -4,7 +4,11 @@ CFLAGS := --std=gnu11 -Wpedantic -Wall -Wextra -g
 SOURCES := main.c codegen.c parse.c tokenize.c type.c
 OBJECTS := $(SOURCES:.c=.o)
 
-TEST_SOURCES := $(shell find ./tests/run -name "*.c")
+TEST_SOURCES := tests/run/arith.c \
+	tests/run/basics.c \
+	tests/run/pointers.c \
+	tests/run/calls.c
+
 TEST_EXES := $(basename $(TEST_SOURCES))
 
 scc: $(OBJECTS)
@@ -21,8 +25,8 @@ test-compile: scc
 
 test: test-compile test-run
 
-tests/run/helpers.o: tests/run/helpers.s
-	$(CC) -c -o $@ $<
+tests/run/helpers.o: tests/run/helpers.c
+	$(CC) -g -O2 -c -o $@ $<
 
 tests/run/%.preproc.c: tests/run/%.c
 	$(CC) -E -P $< > $@

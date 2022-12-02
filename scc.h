@@ -53,6 +53,7 @@ typedef enum
   TOKEN_LT,
   TOKEN_LT_EQ,
   TOKEN_AMPERSAND,
+  TOKEN_DOUBLE_AMPERSAND,
   TOKEN_COMMA,
   TOKEN_EOF,
 } token_kind;
@@ -143,6 +144,7 @@ typedef enum node_kind
   NODE_ADDROF,
   NODE_DEREF,
   NODE_CALL,
+  NODE_AND,
   NODE_BREAK,
   /* Control flow */
   NODE_IF,
@@ -219,6 +221,11 @@ typedef struct node
       struct node* body;
       struct node* cond;
     } do_;
+    struct
+    {
+      struct node* left;
+      struct node* right;
+    } and_;
   } u;
 } node;
 

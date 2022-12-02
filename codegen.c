@@ -303,6 +303,22 @@ codegen_expr(node* n)
     printf("  call %s\n", n->u.call.name);
     push("rax");
   }
+
+  if (n->kind == NODE_AND) {
+    int label_idx = gen_label();
+    char* label = gen_label_name(".L.and", label_idx);
+    codegen_expr(n->u.and_.left);
+    pop("rax");
+    printf("  cmp $0, %%rax\n");
+    printf("  je %s\n", label);
+    codegen_expr(n->u.and_.right);
+    pop("rax");
+    printf("  cmp $0, %%rax\n");
+    printf("  setne %%al\n");
+    printf("  movzb %%al, %%eax\n");
+    printf("%s:\n", label);
+    push("rax");
+  }
 }
 
 void

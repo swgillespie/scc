@@ -162,6 +162,18 @@ make_add(token* tok, node* left, node* right)
 }
 
 static node*
+make_logical_and(token* tok, node* left, node* right)
+{
+  node* n = malloc(sizeof(node));
+  n->kind = NODE_AND;
+  n->ty = ty_int;
+  n->tok = tok;
+  n->u.and_.left = left;
+  n->u.and_.right = right;
+  return n;
+}
+
+static node*
 make_return(token* tok, node* val)
 {
   node* n = malloc(sizeof(node));
@@ -382,6 +394,9 @@ do_stmt(token**);
 
 static node*
 unary_expr(token**);
+
+static node*
+logical_and_expr(token**);
 
 static type*
 declaration_specifiers(token**);
@@ -662,7 +677,7 @@ static node*
 assignment_expr(token** cursor)
 {
   // TODO - enforce that this expression produces an lvalue
-  node* base = relational_expr(cursor);
+  node* base = logical_and_expr(cursor);
   for (;;) {
     token* eq_tok = *cursor;
     if (equal(cursor, TOKEN_EQUAL)) {
@@ -672,6 +687,28 @@ assignment_expr(token** cursor)
 
     return base;
   }
+}
+
+/**
+ * logical-AND-expression ::=
+ *  inclusive-OR-expression
+ *  logical-AND-expression "&&" inclusive-OR-expression
+ */
+static node*
+logical_and_expr(token** cursor)
+{
+  node* base = relational_expr(cursor);
+  for (;;) {
+    token* op_tok = *cursor;
+    if (equal(cursor, TOKEN_DOUBLE_AMPERSAND)) {
+      base = make_logical_and(op_tok, base, logical_and_expr(cursor));
+      continue;
+    }
+
+    break;
+  }
+
+  return base;
 }
 
 /**
