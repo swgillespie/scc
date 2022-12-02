@@ -113,7 +113,10 @@ make_node_binary(token* tok, binop op, node* left, node* right)
   node* n = malloc(sizeof(node));
   n->kind = NODE_BINOP;
   n->tok = tok;
-  SCC_ASSERT(n->tok, op != BINOP_ADD, "call make_add() instead for add ops");
+  SCC_ASSERT(
+    n->tok, op != BINOP_ADD, "call make_add_or_sub() instead for add ops");
+  SCC_ASSERT(
+    n->tok, op != BINOP_SUB, "call make_add_or_sub() instead for sub ops");
   // TODO - there are complex promotion rules that inform what the type of
   // this expression will be
   n->ty = left->ty;
@@ -124,11 +127,13 @@ make_node_binary(token* tok, binop op, node* left, node* right)
 }
 
 static node*
-make_add(token* tok, node* left, node* right)
+make_add_or_sub(binop op, token* tok, node* left, node* right)
 {
+  SCC_ASSERT(tok, op == BINOP_ADD || op == BINOP_SUB, "not an add or sub");
+  char* tok_str = op == BINOP_ADD ? "+" : "-";
   node* n = malloc(sizeof(node));
   n->tok = tok;
-  n->u.binop.op = BINOP_ADD;
+  n->u.binop.op = op;
   // 6.5.6 Additive Operators (C11: Page 92)
   if ((left->ty->base && right->ty->kind == TYPE_INT) ||
       (left->ty->kind == TYPE_INT && right->ty->base)) {
@@ -143,15 +148,26 @@ make_add(token* tok, node* left, node* right)
     return n;
   }
 
-  if (left->ty->kind != TYPE_INT) {
+  if (right->ty->base && left->ty->base && op == BINOP_SUB) {
+    // 6.5.6.9 Subtraction of two pointers
+    // TODO type equality?
+    if (right->ty->base != left->ty->base) {
+      error_at(right->tok,
+               "invalid types for `%s` operator (have `%s` and `%s`)",
+               tok_str,
+               type_name(right->ty),
+               type_name(left->ty));
+    }
+    n->ty = left->ty;
+  } else if (left->ty->kind != TYPE_INT) {
     error_at(left->tok,
-             "invalid type for `+` operator (have `%s`)",
+             "invalid type for `%s` operator (have `%s`)",
+             tok_str,
              type_name(left->ty));
-  }
-
-  if (right->ty->kind != TYPE_INT) {
+  } else if (right->ty->kind != TYPE_INT) {
     error_at(right->tok,
-             "invalid type for `+` operator (have `%s`)",
+             "invalid type for `%s` operator (have `%s`)",
+             tok_str,
              type_name(right->ty));
   }
 
@@ -755,12 +771,12 @@ add_expr(token** cursor)
   for (;;) {
     token* op_tok = *cursor;
     if (equal(cursor, TOKEN_PLUS)) {
-      base = make_add(op_tok, base, mul_expr(cursor));
+      base = make_add_or_sub(BINOP_ADD, op_tok, base, mul_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_MINUS)) {
-      base = make_node_binary(op_tok, BINOP_SUB, base, mul_expr(cursor));
+      base = make_add_or_sub(BINOP_SUB, op_tok, base, mul_expr(cursor));
       continue;
     }
 
@@ -878,7 +894,23 @@ postfix_expr(token** cursor)
       return make_node_assign(
         candidate,
         base,
-        make_add(candidate, base, make_node_const(candidate, ty_int, 1)));
+        make_add_or_sub(
+          BINOP_ADD, candidate, base, make_node_const(candidate, ty_int, 1)));
+    }
+
+    if (equal(cursor, TOKEN_MINUS_MINUS)) {
+      // Post-decrement is only legal on lvalues
+      if (!is_lvalue(base)) {
+        error_at(*cursor, "lvalue required as decrement operand");
+      }
+
+      // rough desugar into "base = base - 1", where lhs base is evaluated
+      // in an lvalue context and rhs base in a rvalue context
+      return make_node_assign(
+        candidate,
+        base,
+        make_add_or_sub(
+          BINOP_SUB, candidate, base, make_node_const(candidate, ty_int, 1)));
     }
 
     if (equal(cursor, TOKEN_LPAREN)) {
@@ -920,8 +952,9 @@ postfix_expr(token** cursor)
       // Array subscripting in C is just sugar for pointer arithmetic.
       // e1[e2] is exactly equivalent to *(e1 + e2).
       //
-      // These types are checked in make_add, but we check them again here for
-      // a better error message prior to desugaring down to `+` and `*`.
+      // These types are checked in make_add_or_sub, but we check them again
+      // here for a better error message prior to desugaring down to `+` and
+      // `*`.
       node* subscript = expr(cursor);
       eat(cursor, TOKEN_RBRACKET);
       if ((base->ty->base && subscript->ty->kind == TYPE_INT) ||
@@ -932,7 +965,8 @@ postfix_expr(token** cursor)
           base = make_deref(candidate, base);
         } else {
           // Otherwise, *(e1 + e2)
-          base = make_deref(candidate, make_add(candidate, base, subscript));
+          base = make_deref(
+            candidate, make_add_or_sub(BINOP_ADD, candidate, base, subscript));
         }
         continue;
       }

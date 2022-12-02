@@ -95,6 +95,10 @@ loops()
   }
 
   ASSERT_EQ(t, 5);
+
+  int u = 5;
+  u--;
+  ASSERT_EQ(u, 4);
 }
 
 int
