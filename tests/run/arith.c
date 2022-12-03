@@ -31,6 +31,7 @@ main()
   ASSERT_EQ(0 && 5, 0);
   ASSERT_EQ(5 && 0, 0);
   ASSERT_EQ(5 && 5, 1);
+  ASSERT_EQ('x' + 1, 'y');
 
   _Bool t = 1;
   _Bool f = 0;

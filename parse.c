@@ -127,6 +127,42 @@ make_node_binary(token* tok, binop op, node* left, node* right)
 }
 
 static node*
+make_conv(token* tok, node* value, type* ty)
+{
+  node* n = malloc(sizeof(node));
+  n->tok = tok;
+  n->kind = NODE_CONV;
+  n->ty = ty;
+  n->u.conv.value = value;
+  return n;
+}
+
+static void
+usual_arithmetic_conversions(node** left, node** right)
+{
+  // 6.3.1.8 Usual arithmetic conversions
+  type* left_ty = (*left)->ty;
+  type* right_ty = (*right)->ty;
+
+  // TODO type equality?
+  if (left_ty == right_ty) {
+    return;
+  }
+
+  // The spec defines the priority of conversions using "integer conversion
+  // rank", defined in 6.3.1.1.
+  //
+  // The type with the lesser conversion rank is promoted to the type with the
+  // greater conversion rank.
+  int cmp = integer_conversion_rank_compare(left_ty, right_ty);
+  if (cmp < 0) {
+    *left = make_conv((*left)->tok, *left, right_ty);
+  } else if (cmp > 0) {
+    *right = make_conv((*right)->tok, *right, left_ty);
+  }
+}
+
+static node*
 make_add_or_sub(binop op, token* tok, node* left, node* right)
 {
   SCC_ASSERT(tok, op == BINOP_ADD || op == BINOP_SUB, "not an add or sub");
@@ -135,6 +171,10 @@ make_add_or_sub(binop op, token* tok, node* left, node* right)
   n->tok = tok;
   n->u.binop.op = op;
   // 6.5.6 Additive Operators (C11: Page 92)
+  if (is_arithmetic_type(left->ty) && is_arithmetic_type(right->ty)) {
+    usual_arithmetic_conversions(&left, &right);
+  }
+
   if ((left->ty->base && right->ty->kind == TYPE_INT) ||
       (left->ty->kind == TYPE_INT && right->ty->base)) {
     // Only "arithmetic type" is required for the non-pointer argument here,

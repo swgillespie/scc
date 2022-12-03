@@ -78,3 +78,41 @@ type_name(type* ty)
   fflush(stream);
   return name;
 }
+
+int
+integer_conversion_rank_compare(type* left, type* right)
+{
+  if (left == right) {
+    return 0;
+  }
+
+  // The rank of _Bool shall be less than the rank of all other standard integer
+  // types.
+  if (left == ty_bool) {
+    return -1;
+  }
+
+  if (right == ty_bool) {
+    return 1;
+  }
+
+  // This implementation only supports char and int as standard integer types.
+  if (left->size < right->size) {
+    return -1;
+  } else {
+    return 1;
+  }
+}
+
+int
+is_arithmetic_type(type* left)
+{
+  switch (left->kind) {
+    case TYPE_INT:
+    case TYPE_CHAR:
+    case TYPE_BOOL:
+      return 1;
+    default:
+      return 0;
+  }
+}

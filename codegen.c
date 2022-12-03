@@ -319,6 +319,24 @@ codegen_expr(node* n)
     printf("%s:\n", label);
     push("rax");
   }
+
+  if (n->kind == NODE_CONV) {
+    codegen_expr(n->u.conv.value);
+    pop("rax");
+    // TODO: conv to a bool is special
+    switch (n->ty->size) {
+      case 1:
+        printf("  movsx %%al, %%eax\n");
+        break;
+      case 4:
+        printf("  cltq\n");
+        break;
+      default:
+        break;
+    }
+
+    push("rax");
+  }
 }
 
 void

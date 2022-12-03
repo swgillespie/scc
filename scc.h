@@ -132,6 +132,20 @@ char*
 type_name(type* ty);
 
 /**
+ * Compares two types and returns a number based on the comparison of the
+ * "integer conversion rank" of the two types. Returns -1 if left < right,
+ * 0 if left == 0, and 1 if left > right.
+ *
+ * Implements the algorithm in 6.3.1.1 of the spec for ranking integer
+ * conversions.
+ */
+int
+integer_conversion_rank_compare(type* left, type* right);
+
+int
+is_arithmetic_type(type* ty);
+
+/**
  * parse.c - Parsing C source into node trees
  */
 
@@ -146,6 +160,7 @@ typedef enum node_kind
   NODE_DEREF,
   NODE_CALL,
   NODE_AND,
+  NODE_CONV,
   NODE_BREAK,
   /* Control flow */
   NODE_IF,
@@ -227,6 +242,10 @@ typedef struct node
       struct node* left;
       struct node* right;
     } and_;
+    struct
+    {
+      struct node* value;
+    } conv;
   } u;
 } node;
 
