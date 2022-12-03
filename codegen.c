@@ -300,7 +300,26 @@ codegen_expr(node* n)
     // number of vector arguments be written into %al. We don't support that, so
     // we just write zero.
     printf("  mov $0, %%al\n");
+    // Furthermore, if we're calling C functions, C generally expects the stack
+    // to be aligned to a 16-byte boundary. Since we are dynamically pushing and
+    // popping things from the stack as part of our codegen strategy, we have no
+    // idea what the stack pointer looks like when we get here. We must align it
+    // ourselves. SCC generally does not care about stack alignment because it
+    // doesn't generally emit instructions that require it, but other C
+    // compilers do, and we will call them (such as gcc-compiled functions in
+    // libc).
+    //
+    // First, we save the current stack pointer, for when we return;
+    push("rbp");
+    printf("  mov %%rsp, %%rbp\n");
+    // Then, we align our stack pointer downwards.
+    printf("  and $0xFFFFFFFFFFFFFFF0, %%rsp\n");
+    // With a properly aligned stack, we can now call...
     printf("  call %s\n", n->u.call.name);
+    // ...restore our potentially-unaligned stack pointer...
+    printf("  mov %%rbp, %%rsp\n");
+    pop("rbp");
+    // ...and continue.
     push("rax");
   }
 
