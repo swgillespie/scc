@@ -98,24 +98,30 @@ typedef struct type
    * type of the array and dereferenced pointer type respectively.
    */
   struct type* base;
-  /**
-   * If TYPE_ARRAY, the length of the array.
-   */
-  int array_length;
 
   /**
    * The size of this type, e.g. what sizeof returns.
    */
   int size;
 
-  /**
-   * If TYPE_FUNCTION, the return type of the function.
-   */
-  struct type* ret;
-  /**
-   * If TYPE_FUNCTION, the parameter types of this function.
-   */
-  struct parameter* params;
+  union
+  {
+    /**
+     * If TYPE_ARRAY, the length of the array.
+     */
+    int array_length;
+    struct
+    {
+      /**
+       * If TYPE_FUNCTION, the return type of the function.
+       */
+      struct type* ret;
+      /**
+       * If TYPE_FUNCTION, the parameter types of this function.
+       */
+      struct parameter* params;
+    } function;
+  } u;
 } type;
 
 extern type* ty_int;

@@ -1057,7 +1057,7 @@ postfix_expr(token** cursor)
                    type_name(base->u.symbol_ref->ty));
         }
 
-        ret_ty = base->u.symbol_ref->ty->ret;
+        ret_ty = base->u.symbol_ref->ty->u.function.ret;
       }
 
       return make_call(candidate, name, arg_head.next, ret_ty);
@@ -1312,7 +1312,8 @@ external_declaration(token** cursor)
     int arg_count = 0;
     node parameter_inits = { 0 };
     node* parameter_cursor = &parameter_inits;
-    for (parameter* p = current_function->ty->params; p; p = p->next) {
+    for (parameter* p = current_function->ty->u.function.params; p;
+         p = p->next) {
       symbol* arg = make_symbol_local(p->name, p->ty);
       define(arg);
       parameter_cursor = parameter_cursor->next = make_expr_stmt(

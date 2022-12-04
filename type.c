@@ -22,7 +22,7 @@ make_array_type(type* base, int len)
   type* t = malloc(sizeof(type));
   t->kind = TYPE_ARRAY;
   t->base = base;
-  t->array_length = len;
+  t->u.array_length = len;
   t->size = base->size * len;
   return t;
 }
@@ -32,8 +32,8 @@ make_function_type(type* ret, parameter* params)
 {
   type* t = malloc(sizeof(type));
   t->kind = TYPE_FUNCTION;
-  t->ret = ret;
-  t->params = params;
+  t->u.function.ret = ret;
+  t->u.function.params = params;
   return t;
 }
 
@@ -54,9 +54,9 @@ type_name_to_stream(type* ty, FILE* stream)
       fputs("_Bool", stream);
       return;
     case TYPE_FUNCTION:
-      type_name_to_stream(ty->ret, stream);
+      type_name_to_stream(ty->u.function.ret, stream);
       fprintf(stream, "(");
-      for (parameter* p = ty->params; p; p = p->next) {
+      for (parameter* p = ty->u.function.params; p; p = p->next) {
         type_name_to_stream(p->ty, stream);
         if (p->next) {
           fprintf(stream, ", ");
@@ -66,7 +66,7 @@ type_name_to_stream(type* ty, FILE* stream)
       return;
     case TYPE_ARRAY:
       type_name_to_stream(ty->base, stream);
-      fprintf(stream, "[%d]", ty->array_length);
+      fprintf(stream, "[%d]", ty->u.array_length);
       return;
     case TYPE_POINTER:
       type_name_to_stream(ty->base, stream);
