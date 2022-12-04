@@ -429,13 +429,13 @@ make_addrof(token* tok, node* base)
 }
 
 static node*
-make_call(token* tok, char* name, node* args)
+make_call(token* tok, char* name, node* args, type* ret_ty)
 {
   node* n = malloc(sizeof(node));
   memset(n, 0, sizeof(node));
   n->kind = NODE_CALL;
   n->tok = tok;
-  n->ty = ty_int;
+  n->ty = ret_ty;
   n->u.call.name = name;
   n->u.call.args = args;
   return n;
@@ -1044,6 +1044,7 @@ postfix_expr(token** cursor)
       }
 
       char* name;
+      type* ret_ty = ty_int;
       if (!base->u.symbol_ref) {
         /* it's clowny as hell that this is only a warning, that's C for you */
         name = strndup(base->tok->pos, base->tok->len);
@@ -1055,9 +1056,11 @@ postfix_expr(token** cursor)
                    "called object is not a function (has type `%s`)",
                    type_name(base->u.symbol_ref->ty));
         }
+
+        ret_ty = base->u.symbol_ref->ty->ret;
       }
 
-      return make_call(candidate, name, arg_head.next);
+      return make_call(candidate, name, arg_head.next, ret_ty);
     }
 
     if (equal(cursor, TOKEN_LBRACKET)) {
