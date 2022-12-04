@@ -123,6 +123,18 @@ make_node_const(token* tok, type* ty, int value)
 }
 
 static node*
+make_node_arg(token* tok, type* ty, int count)
+{
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_ARG;
+  n->tok = tok;
+  n->ty = ty;
+  n->u.arg.count = count;
+  return n;
+}
+
+static node*
 make_symbol_ref(token* tok, symbol* sym);
 
 static node*
@@ -510,6 +522,9 @@ logical_and_expr(token**);
 
 static type*
 declaration_specifiers(token**);
+
+static token*
+declarator(token**, type**);
 
 /**
  * 6.7.7 - Type names
@@ -1127,6 +1142,46 @@ primary(token** cursor)
   return make_node_const(integer, ty_int, integer->value);
 }
 
+static parameter*
+make_parameter(token* name, type* ty)
+{
+  parameter* p = malloc(sizeof(parameter));
+  memset(p, 0, sizeof(parameter));
+  p->name = name;
+  p->ty = ty;
+  return p;
+}
+
+/**
+ * parameter-type-list ::=
+ *	parameter-list
+ *	parameter-list "," "..."
+ *
+ * parameter-list ::=
+ *  parameter-declaration
+ *  parameter-list "," parameter-declaration
+ *
+ * parameter-declaration ::=
+ *	declaration-specifiers declarator
+ *  declaration-specifiers abstract-declarator?
+ */
+static parameter*
+parameter_list(token** cursor)
+{
+  parameter head = { 0 };
+  parameter* params = &head;
+  while (!equal(cursor, TOKEN_RPAREN)) {
+    type* declspec = declaration_specifiers(cursor);
+    token* param_name = declarator(cursor, &declspec);
+    params = params->next = make_parameter(param_name, declspec);
+    if (!peek(cursor, TOKEN_RPAREN)) {
+      eat(cursor, TOKEN_COMMA);
+    }
+  }
+
+  return head.next;
+}
+
 /**
  * declarator ::=
  *  pointer? direct-declarator
@@ -1149,8 +1204,8 @@ declarator(token** cursor, type** base)
         error_at(*cursor,
                  "declaration declares a function that returns a function");
       }
-      eat(cursor, TOKEN_RPAREN);
-      *base = make_function_type(*base);
+      parameter* params = parameter_list(cursor);
+      *base = make_function_type(*base, params);
       continue;
     }
 
@@ -1248,8 +1303,25 @@ external_declaration(token** cursor)
     current_function = make_symbol_function(decl, declspec);
     define(current_function);
     current_function->linkage = LINKAGE_INTERNAL;
+
+    // Declare locals for every parameter of this function and initialize them
+    // with their corresponding function argument.
+    int arg_count = 0;
+    node parameter_inits = { 0 };
+    node* parameter_cursor = &parameter_inits;
+    for (parameter* p = current_function->ty->params; p; p = p->next) {
+      symbol* arg = make_symbol_local(p->name, p->ty);
+      define(arg);
+      parameter_cursor = parameter_cursor->next = make_expr_stmt(
+        p->name,
+        make_node_assign(p->name,
+                         make_symbol_ref(p->name, arg),
+                         make_node_arg(p->name, p->ty, arg_count++)));
+    }
+
     node* body = compound_stmt(cursor);
-    current_function->u.function.body = body;
+    parameter_cursor->next = body;
+    current_function->u.function.body = parameter_inits.next;
     current_function->next = symbols;
     symbols = current_function;
   } else if (equal(cursor, TOKEN_SEMICOLON)) {

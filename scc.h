@@ -112,12 +112,23 @@ typedef struct type
    * If TYPE_FUNCTION, the return type of the function.
    */
   struct type* ret;
+  /**
+   * If TYPE_FUNCTION, the parameter types of this function.
+   */
+  struct parameter* params;
 } type;
 
 extern type* ty_int;
 extern type* ty_void;
 extern type* ty_char;
 extern type* ty_bool;
+
+typedef struct parameter
+{
+  struct parameter* next;
+  token* name;
+  type* ty;
+} parameter;
 
 type*
 make_pointer_type(type* base);
@@ -126,7 +137,7 @@ type*
 make_array_type(type* base, int len);
 
 type*
-make_function_type(type* ret);
+make_function_type(type* ret, parameter* params);
 
 char*
 type_name(type* ty);
@@ -162,6 +173,7 @@ typedef enum node_kind
   NODE_AND,
   NODE_CONV,
   NODE_BREAK,
+  NODE_ARG,
   /* Control flow */
   NODE_IF,
   /* TODO: it's probably possible to unify the two loop nodes */
@@ -246,6 +258,10 @@ typedef struct node
     {
       struct node* value;
     } conv;
+    struct
+    {
+      int count;
+    } arg;
   } u;
 } node;
 

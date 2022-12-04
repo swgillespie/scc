@@ -28,11 +28,12 @@ make_array_type(type* base, int len)
 }
 
 type*
-make_function_type(type* ret)
+make_function_type(type* ret, parameter* params)
 {
   type* t = malloc(sizeof(type));
   t->kind = TYPE_FUNCTION;
   t->ret = ret;
+  t->params = params;
   return t;
 }
 
@@ -54,7 +55,14 @@ type_name_to_stream(type* ty, FILE* stream)
       return;
     case TYPE_FUNCTION:
       type_name_to_stream(ty->ret, stream);
-      fprintf(stream, "()");
+      fprintf(stream, "(");
+      for (parameter* p = ty->params; p; p = p->next) {
+        type_name_to_stream(p->ty, stream);
+        if (p->next) {
+          fprintf(stream, ", ");
+        }
+      }
+      fprintf(stream, ")");
       return;
     case TYPE_ARRAY:
       type_name_to_stream(ty->base, stream);

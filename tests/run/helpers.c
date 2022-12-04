@@ -1,18 +1,6 @@
 #include <stdarg.h>
 
 int
-adds_arguments(int x, int y)
-{
-  return x + y;
-}
-
-int
-returns_argument(int x)
-{
-  return x;
-}
-
-int
 adds_six_arguments(int a, ...)
 {
   va_list args;

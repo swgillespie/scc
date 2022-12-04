@@ -356,6 +356,15 @@ codegen_expr(node* n)
 
     push("rax");
   }
+
+  if (n->kind == NODE_ARG) {
+    if (n->u.arg.count > 5) {
+      error_at(n->tok, "greater than 6 parameters not currently supported");
+    }
+
+    const char* arg = argument_regs[n->u.arg.count];
+    push(arg);
+  }
 }
 
 void

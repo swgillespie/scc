@@ -7,6 +7,18 @@ returns_zero()
 }
 
 int
+adds_arguments(int x, int y)
+{
+  return x + y;
+}
+
+int
+returns_argument(int x)
+{
+  return x;
+}
+
+int
 calls()
 {
   ASSERT_EQ(returns_zero(), 0);
