@@ -39,6 +39,7 @@ static symbol*
 make_symbol_local(token* tok, type* ty)
 {
   symbol* s = malloc(sizeof(symbol));
+  memset(s, 0, sizeof(symbol));
   s->tok = tok;
   s->linkage = LINKAGE_NONE;
   s->name = strndup(tok->pos, tok->len);
@@ -53,6 +54,7 @@ static symbol*
 make_symbol_function(token* tok, type* ty)
 {
   symbol* s = malloc(sizeof(symbol));
+  memset(s, 0, sizeof(symbol));
   s->tok = tok;
   s->linkage = LINKAGE_EXTERNAL;
   s->name = strndup(tok->pos, tok->len);
@@ -65,6 +67,7 @@ static symbol*
 make_symbol_global(token* tok, type* ty, char* name)
 {
   symbol* s = malloc(sizeof(symbol));
+  memset(s, 0, sizeof(symbol));
   s->tok = tok;
   s->linkage = LINKAGE_INTERNAL;
   s->name = name;
@@ -77,6 +80,7 @@ static node*
 make_node_const(token* tok, type* ty, int value)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_CONST;
   n->ty = ty;
   n->tok = tok;
@@ -111,6 +115,7 @@ static node*
 make_node_binary(token* tok, binop op, node* left, node* right)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_BINOP;
   n->tok = tok;
   SCC_ASSERT(
@@ -130,6 +135,7 @@ static node*
 make_conv(token* tok, node* value, type* ty)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->tok = tok;
   n->kind = NODE_CONV;
   n->ty = ty;
@@ -168,6 +174,7 @@ make_add_or_sub(binop op, token* tok, node* left, node* right)
   SCC_ASSERT(tok, op == BINOP_ADD || op == BINOP_SUB, "not an add or sub");
   char* tok_str = op == BINOP_ADD ? "+" : "-";
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->tok = tok;
   n->u.binop.op = op;
   // 6.5.6 Additive Operators (C11: Page 92)
@@ -221,6 +228,7 @@ static node*
 make_logical_and(token* tok, node* left, node* right)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_AND;
   n->ty = ty_int;
   n->tok = tok;
@@ -233,6 +241,7 @@ static node*
 make_return(token* tok, node* val)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_RETURN;
   n->ty = ty_void;
   n->tok = tok;
@@ -245,6 +254,7 @@ static node*
 make_nop()
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_NOP;
   return n;
 }
@@ -253,6 +263,7 @@ static node*
 make_node_assign(token* tok, node* lvalue, node* rvalue)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_ASSIGN;
   n->tok = tok;
   n->ty = rvalue->ty;
@@ -265,6 +276,7 @@ static node*
 make_symbol_ref(token* tok, symbol* sym)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_SYMBOL_REF;
   n->tok = tok;
   if (sym) {
@@ -280,6 +292,7 @@ static node*
 make_expr_stmt(token* tok, node* value)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_EXPR_STMT;
   n->tok = tok;
   n->ty = ty_void;
@@ -291,6 +304,7 @@ static node*
 make_if_stmt(token* tok, node* cond, node* then, node* else_)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_IF;
   n->tok = tok;
   n->ty = ty_void;
@@ -304,6 +318,7 @@ static node*
 make_for_stmt(token* tok, node* initializer, node* cond, node* next, node* body)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_FOR;
   n->tok = tok;
   n->ty = ty_void;
@@ -318,6 +333,7 @@ static node*
 make_do_stmt(token* tok, node* body, node* cond)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_DO;
   n->tok = tok;
   n->ty = ty_void;
@@ -335,6 +351,7 @@ make_break_stmt(token* tok)
   }
 
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_BREAK;
   n->tok = tok;
   n->ty = ty_void;
@@ -345,6 +362,7 @@ static node*
 make_deref(token* tok, node* base)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_DEREF;
   n->tok = tok;
   n->ty = base->ty->base;
@@ -356,6 +374,7 @@ static node*
 make_addrof(token* tok, node* base)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_ADDROF;
   n->tok = tok;
   n->ty = make_pointer_type(base->ty);
@@ -367,6 +386,7 @@ static node*
 make_call(token* tok, char* name, node* args)
 {
   node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
   n->kind = NODE_CALL;
   n->tok = tok;
   n->ty = ty_int;
