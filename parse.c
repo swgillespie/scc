@@ -11,6 +11,40 @@ static symbol* current_function;
 static symbol* symbols;
 
 /**
+ * Lexical scope management
+ */
+typedef struct scope
+{
+  struct scope* next;
+  struct symbol* symbols;
+} scope;
+
+static scope* current_scope;
+static scope* global_scope;
+
+static void
+push_scope(void)
+{
+  scope* s = malloc(sizeof(scope));
+  memset(s, 0, sizeof(scope));
+  s->next = current_scope;
+  current_scope = s;
+}
+
+static void
+pop_scope(void)
+{
+  current_scope = current_scope->next;
+}
+
+static void
+define(symbol* sym)
+{
+  sym->next_in_scope = current_scope->symbols;
+  current_scope->symbols = sym;
+}
+
+/**
  * 0 if we are not in a loop or breakable expr (switch), >1 if we are. Used for
  * detecting if a "break" or "continue" is valid.
  */
@@ -614,6 +648,7 @@ declaration(token** cursor)
     node* initializer = expr(cursor);
     token* semi_tok = eat(cursor, TOKEN_SEMICOLON);
     symbol* s = make_symbol_local(ident, decltype);
+    define(s);
     return make_expr_stmt(
       semi_tok,
       make_node_assign(eq_tok, make_symbol_ref(ident, s), initializer));
@@ -624,7 +659,7 @@ declaration(token** cursor)
    * result in any codegen.
    */
   eat(cursor, TOKEN_SEMICOLON);
-  make_symbol_local(ident, decltype);
+  define(make_symbol_local(ident, decltype));
   return make_nop();
 }
 
@@ -638,9 +673,11 @@ compound_stmt(token** cursor)
   eat(cursor, TOKEN_LBRACE);
   node head = { 0 };
   node* stmts = &head;
+  push_scope();
   while (!peek(cursor, TOKEN_RBRACE)) {
     stmts = stmts->next = stmt(cursor);
   }
+  pop_scope();
 
   eat(cursor, TOKEN_RBRACE);
   return head.next;
@@ -679,6 +716,7 @@ for_stmt(token** cursor)
   // Declarations are technically not statements, but C11 makes an exception
   // and allows for statements to contain one decl in the initializer stanza.
   // TODO: this should be any token in the first set of a decl
+  push_scope();
   if (can_start_type_name(cursor)) {
     initializer = declaration(cursor);
   } else {
@@ -695,6 +733,7 @@ for_stmt(token** cursor)
   push_loop();
   node* body = stmt(cursor);
   pop_loop();
+  pop_scope();
   return make_for_stmt(for_tok, initializer, cond, next, body);
 }
 
@@ -1056,22 +1095,12 @@ primary(token** cursor)
 
   if (peek(cursor, TOKEN_IDENT)) {
     token* name = eat(cursor, TOKEN_IDENT);
-
-    // Local variable
-    for (symbol* sym = current_function->u.function.locals; sym;
-         sym = sym->next) {
-      if (strncmp(name->pos, sym->name, name->len) == 0 &&
-          name->len == strlen(sym->name)) {
-        return make_symbol_ref(name, sym);
-      }
-    }
-
-    // Global variables
-    for (symbol* sym = symbols; sym && sym->kind != SYMBOL_EMPTY;
-         sym = sym->next) {
-      if (strncmp(name->pos, sym->name, name->len) == 0 &&
-          name->len == strlen(sym->name)) {
-        return make_symbol_ref(name, sym);
+    for (scope* s = current_scope; s; s = s->next) {
+      for (symbol* sym = s->symbols; sym; sym = sym->next_in_scope) {
+        if (strncmp(name->pos, sym->name, name->len) == 0 &&
+            name->len == strlen(sym->name)) {
+          return make_symbol_ref(name, sym);
+        }
       }
     }
 
@@ -1217,6 +1246,7 @@ external_declaration(token** cursor)
   if (peek(cursor, TOKEN_LBRACE)) {
     // This is a function definition.
     current_function = make_symbol_function(decl, declspec);
+    define(current_function);
     current_function->linkage = LINKAGE_INTERNAL;
     node* body = compound_stmt(cursor);
     current_function->u.function.body = body;
@@ -1230,6 +1260,7 @@ external_declaration(token** cursor)
     } else {
       sym = make_symbol_global(decl, declspec, strndup(decl->pos, decl->len));
     }
+    define(sym);
     sym->next = symbols;
     symbols = sym;
   }
@@ -1238,6 +1269,9 @@ external_declaration(token** cursor)
 symbol*
 parse(token** cursor)
 {
+  global_scope = malloc(sizeof(scope));
+  memset(global_scope, 0, sizeof(scope));
+  current_scope = global_scope;
   while (!equal(cursor, TOKEN_EOF)) {
     external_declaration(cursor);
   }

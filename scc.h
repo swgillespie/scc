@@ -270,6 +270,11 @@ typedef enum symbol_kind
 typedef struct symbol
 {
   struct symbol* next;
+  /**
+   * The next symbol in this declaration scope, if this symbol can be referred
+   * to by name.
+   */
+  struct symbol* next_in_scope;
   symbol_kind kind;
   char* name;
   token* tok;

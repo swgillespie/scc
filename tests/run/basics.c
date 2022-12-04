@@ -99,6 +99,26 @@ loops()
   int u = 5;
   u--;
   ASSERT_EQ(u, 4);
+  return 0;
+}
+
+int
+scopes()
+{
+  int x = 0;
+  {
+    int x = 1;
+    ASSERT_EQ(x, 1);
+    x++;
+    ASSERT_EQ(x, 2);
+  }
+  ASSERT_EQ(x, 0);
+  return 0;
+
+  int q = 99;
+  for (int q = 0; q < 4; q++) {
+  }
+  ASSERT_EQ(q, 99);
 }
 
 int
@@ -107,6 +127,7 @@ main()
   decls();
   branches();
   loops();
+  scopes();
   puts("basics ok");
   return 0;
 }
