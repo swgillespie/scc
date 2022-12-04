@@ -2,19 +2,16 @@
 #define __TEST_H__
 
 int
-returns_argument();
+puts(char* str);
 int
-adds_arguments();
+strlen(char* str);
 int
-adds_six_arguments();
-int
-puts();
-int
-strlen();
-void
-printf();
+printf(char* format, ...);
 void
 abort();
+
+int
+adds_six_arguments(int a, ...);
 
 #define ASSERT_EQ(actual, expected)                                            \
   do {                                                                         \

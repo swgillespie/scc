@@ -201,6 +201,19 @@ tokenize(void)
         cursor->next = make_token(TOKEN_COMMA, c, 1);
         c++;
         break;
+      case '.':
+        if (*++c == '.') {
+          if (*++c == '.') {
+            cursor->next = make_token(TOKEN_ELLIPSIS, c - 2, 3);
+            c++;
+          } else {
+            error_at(cursor, "unexpected character");
+          }
+        } else {
+          error_at(cursor, "unexpected character");
+        }
+
+        break;
       default:
         if (isalpha(*c) || *c == '_') {
           size_t len = 0;

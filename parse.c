@@ -1169,17 +1169,31 @@ make_parameter(token* name, type* ty)
  *  declaration-specifiers abstract-declarator?
  */
 static parameter*
-parameter_list(token** cursor)
+parameter_list(token** cursor, type* func_ty)
 {
   parameter head = { 0 };
   parameter* params = &head;
+  int seen_one_parameter = 0;
   while (!equal(cursor, TOKEN_RPAREN)) {
+    if (peek(cursor, TOKEN_ELLIPSIS)) {
+      token* ellipsis = eat(cursor, TOKEN_ELLIPSIS);
+      if (!seen_one_parameter) {
+        error_at(ellipsis, "ISO C requires a named argument before `...`");
+      }
+
+      func_ty->u.function.is_vararg = 1;
+      eat(cursor, TOKEN_RPAREN);
+      return head.next;
+    }
+
     type* declspec = declaration_specifiers(cursor);
     token* param_name = declarator(cursor, &declspec);
     params = params->next = make_parameter(param_name, declspec);
     if (!peek(cursor, TOKEN_RPAREN)) {
       eat(cursor, TOKEN_COMMA);
     }
+
+    seen_one_parameter = 1;
   }
 
   return head.next;
@@ -1207,7 +1221,7 @@ declarator(token** cursor, type** base)
         error_at(*cursor,
                  "declaration declares a function that returns a function");
       }
-      parameter* params = parameter_list(cursor);
+      parameter* params = parameter_list(cursor, *base);
       *base = make_function_type(*base, params);
       continue;
     }

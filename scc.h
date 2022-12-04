@@ -56,6 +56,7 @@ typedef enum
   TOKEN_AMPERSAND,
   TOKEN_DOUBLE_AMPERSAND,
   TOKEN_COMMA,
+  TOKEN_ELLIPSIS,
   TOKEN_EOF,
 } token_kind;
 
@@ -120,6 +121,10 @@ typedef struct type
        * If TYPE_FUNCTION, the parameter types of this function.
        */
       struct parameter* params;
+      /**
+       * If TYPE_FUNCTION, whether this is a variadic function.
+       */
+      int is_vararg;
     } function;
   } u;
 } type;
