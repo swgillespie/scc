@@ -53,6 +53,8 @@ typedef enum
   TOKEN_NOT_EQ,
   TOKEN_LT,
   TOKEN_LT_EQ,
+  TOKEN_GT,
+  TOKEN_GT_EQ,
   TOKEN_AMPERSAND,
   TOKEN_DOUBLE_AMPERSAND,
   TOKEN_COMMA,
@@ -207,6 +209,8 @@ typedef enum binop
   BINOP_NOT_EQUAL,
   BINOP_LT,
   BINOP_LT_EQUAL,
+  BINOP_GT,
+  BINOP_GT_EQUAL,
 } binop;
 
 typedef struct node

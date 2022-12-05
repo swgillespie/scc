@@ -20,8 +20,12 @@ main()
   ASSERT_EQ(1 == 0, 0);
   ASSERT_EQ(1 == 1, 1);
   ASSERT_EQ(3 < 4, 1);
+  ASSERT_EQ(4 > 3, 1);
+  ASSERT_EQ(3 > 4, 0);
   ASSERT_EQ(3 < 3, 0);
   ASSERT_EQ(3 <= 3, 1);
+  ASSERT_EQ(4 >= 4, 1);
+  ASSERT_EQ(3 >= 4, 0);
   ASSERT_EQ(0 != 0, 0);
   ASSERT_EQ(0 != 1, 1);
   ASSERT_EQ((1 + 1) * 2, 4);

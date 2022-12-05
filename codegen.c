@@ -237,6 +237,8 @@ codegen_expr(node* n)
       case BINOP_NOT_EQUAL:
       case BINOP_LT:
       case BINOP_LT_EQUAL:
+      case BINOP_GT:
+      case BINOP_GT_EQUAL:
         printf("  cmp %%rdi, %%rax\n");
         if (n->u.binop.op == BINOP_EQUAL) {
           printf("  sete %%al\n");
@@ -246,6 +248,10 @@ codegen_expr(node* n)
           printf("  setl %%al\n");
         } else if (n->u.binop.op == BINOP_LT_EQUAL) {
           printf("  setle %%al\n");
+        } else if (n->u.binop.op == BINOP_GT) {
+          printf("  setg %%al\n");
+        } else if (n->u.binop.op == BINOP_GT_EQUAL) {
+          printf("  setge %%al\n");
         }
         printf("  movzb %%al, %%rax\n");
         push("rax");

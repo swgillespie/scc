@@ -188,6 +188,15 @@ tokenize(void)
         }
 
         break;
+      case '>':
+        if (*++c == '=') {
+          cursor->next = make_token(TOKEN_GT_EQ, c - 1, 2);
+          c++;
+        } else {
+          cursor->next = make_token(TOKEN_GT, c, 1);
+        }
+
+        break;
       case '&':
         if (*++c == '&') {
           cursor->next = make_token(TOKEN_DOUBLE_AMPERSAND, c - 1, 2);

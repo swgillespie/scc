@@ -871,6 +871,16 @@ relational_expr(token** cursor)
       continue;
     }
 
+    if (equal(cursor, TOKEN_GT)) {
+      base = make_node_binary(op_tok, BINOP_GT, base, add_expr(cursor));
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_GT_EQ)) {
+      base = make_node_binary(op_tok, BINOP_GT_EQUAL, base, add_expr(cursor));
+      continue;
+    }
+
     return base;
   }
 }
