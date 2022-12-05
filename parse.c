@@ -908,8 +908,12 @@ add_expr(token** cursor)
   }
 }
 
-/**
- * mul_expr = primary ("*" primary | "%" primary | "/" primary)*
+/*
+ * multiplicative-expression ::=
+ * 	cast-expression
+ * 	multiplicative-expression "*" cast-expression
+ * 	multiplicative-expression "/" cast-expression
+ * 	multiplicative-expression "%" cast-expression
  */
 static node*
 mul_expr(token** cursor)
@@ -918,17 +922,17 @@ mul_expr(token** cursor)
   for (;;) {
     token* op_tok = *cursor;
     if (equal(cursor, TOKEN_STAR)) {
-      base = make_node_binary(op_tok, BINOP_MUL, base, postfix_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_MUL, base, unary_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_PERCENT)) {
-      base = make_node_binary(op_tok, BINOP_MOD, base, postfix_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_MOD, base, unary_expr(cursor));
       continue;
     }
 
     if (equal(cursor, TOKEN_SLASH)) {
-      base = make_node_binary(op_tok, BINOP_DIV, base, postfix_expr(cursor));
+      base = make_node_binary(op_tok, BINOP_DIV, base, unary_expr(cursor));
       continue;
     }
 
