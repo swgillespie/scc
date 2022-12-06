@@ -28,6 +28,7 @@ typedef enum
   TOKEN_BOOL,
   TOKEN_BREAK,
   TOKEN_VOID,
+  TOKEN_EXTERN,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
@@ -286,6 +287,12 @@ typedef enum linkage
   LINKAGE_EXTERNAL,
   LINKAGE_INTERNAL,
 } linkage;
+
+typedef enum storage_class
+{
+  STORAGE_CLASS_NONE,
+  STORAGE_CLASS_EXTERN,
+} storage_class;
 
 typedef enum symbol_kind
 {

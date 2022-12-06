@@ -1,5 +1,7 @@
 #include "test.h"
 
+extern int one;
+
 int
 returns_zero()
 {
@@ -26,6 +28,7 @@ calls()
   ASSERT_EQ(adds_arguments(1, 2), 3);
   ASSERT_EQ(adds_six_arguments(1, 2, 3, 4, 5, 6), 21);
   ASSERT_EQ(strlen("four"), 4);
+  ASSERT_EQ(one, 1);
   return 0;
 }
 

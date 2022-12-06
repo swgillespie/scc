@@ -498,6 +498,10 @@ codegen_function(symbol* sym)
 static void
 codegen_global(symbol* sym)
 {
+  if (sym->linkage == LINKAGE_EXTERNAL) {
+    return;
+  }
+
   if (sym->ty->size == 0) {
     error_at(sym->tok, "storage size is not known");
   }

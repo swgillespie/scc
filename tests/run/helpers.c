@@ -1,5 +1,7 @@
 #include <stdarg.h>
 
+int one = 1;
+
 int
 adds_six_arguments(int a, ...)
 {

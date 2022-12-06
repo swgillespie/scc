@@ -521,7 +521,7 @@ static node*
 logical_and_expr(token**);
 
 static type*
-declaration_specifiers(token**);
+declaration_specifiers(token**, storage_class*);
 
 static token*
 declarator(token**, type**);
@@ -542,7 +542,7 @@ declarator(token**, type**);
 static type*
 decl_type_name(token** cursor)
 {
-  type* decltype = declaration_specifiers(cursor);
+  type* decltype = declaration_specifiers(cursor, NULL);
   while (equal(cursor, TOKEN_STAR)) {
     decltype = make_pointer_type(decltype);
   }
@@ -1200,7 +1200,7 @@ parameter_list(token** cursor, type* func_ty)
       return head.next;
     }
 
-    type* declspec = declaration_specifiers(cursor);
+    type* declspec = declaration_specifiers(cursor, NULL);
     token* param_name = declarator(cursor, &declspec);
     params = params->next = make_parameter(param_name, declspec);
     if (!peek(cursor, TOKEN_RPAREN)) {
@@ -1253,7 +1253,7 @@ declarator(token** cursor, type** base)
  *	type-qualifier declaration-specifiers?
  *	function-specifier declaration-specifiers?
  *
- * storage-class-specifier ::= epsilon
+ * storage-class-specifier ::= "extern"
  * type-specifier ::=
  *   "int"
  *   "char"
@@ -1262,7 +1262,7 @@ declarator(token** cursor, type** base)
  * function-specifier ::= epsilon
  */
 static type*
-declaration_specifiers(token** cursor)
+declaration_specifiers(token** cursor, storage_class* storage)
 {
   type* type_spec = NULL;
   for (;;) {
@@ -1291,6 +1291,20 @@ declaration_specifiers(token** cursor)
       if (type_spec)
         error_at(*cursor, "two or more data types in declaration specifier");
       type_spec = ty_void;
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_EXTERN)) {
+      if (!storage) {
+        error_at(*cursor, "storage class not permitted here");
+      }
+
+      if (*storage != STORAGE_CLASS_NONE) {
+        error_at(*cursor, "more than one storage class not permitted");
+      }
+
+      *storage = STORAGE_CLASS_EXTERN;
+      continue;
     }
 
     break;
@@ -1323,7 +1337,8 @@ declaration_specifiers(token** cursor)
 static void
 external_declaration(token** cursor)
 {
-  type* declspec = declaration_specifiers(cursor);
+  storage_class storage = STORAGE_CLASS_NONE;
+  type* declspec = declaration_specifiers(cursor, &storage);
   token* decl = declarator(cursor, &declspec);
   if (equal(cursor, TOKEN_EQUAL)) {
     error_at(*cursor, "nyi: global decl initializers");
@@ -1364,6 +1379,11 @@ external_declaration(token** cursor)
     } else {
       sym = make_symbol_global(decl, declspec, strndup(decl->pos, decl->len));
     }
+
+    if (storage == STORAGE_CLASS_EXTERN) {
+      sym->linkage = LINKAGE_EXTERNAL;
+    }
+
     define(sym);
     sym->next = symbols;
     symbols = sym;
