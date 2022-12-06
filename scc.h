@@ -27,6 +27,7 @@ typedef enum
   TOKEN_SIZEOF,
   TOKEN_BOOL,
   TOKEN_BREAK,
+  TOKEN_CONTINUE,
   TOKEN_VOID,
   TOKEN_EXTERN,
   // These are real tokens.
@@ -187,6 +188,7 @@ typedef enum node_kind
   NODE_AND,
   NODE_CONV,
   NODE_BREAK,
+  NODE_CONTINUE,
   NODE_ARG,
   /* Control flow */
   NODE_IF,

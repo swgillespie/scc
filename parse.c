@@ -405,6 +405,21 @@ make_break_stmt(token* tok)
 }
 
 static node*
+make_continue_stmt(token* tok)
+{
+  if (!in_loop()) {
+    error_at(tok, "continue outside of loop");
+  }
+
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_CONTINUE;
+  n->tok = tok;
+  n->ty = ty_void;
+  return n;
+}
+
+static node*
 make_deref(token* tok, node* base)
 {
   node* n = malloc(sizeof(node));
@@ -596,6 +611,12 @@ stmt(token** cursor)
     token* break_tok = eat(cursor, TOKEN_BREAK);
     eat(cursor, TOKEN_SEMICOLON);
     return make_break_stmt(break_tok);
+  }
+
+  if (peek(cursor, TOKEN_CONTINUE)) {
+    token* continue_tok = eat(cursor, TOKEN_CONTINUE);
+    eat(cursor, TOKEN_SEMICOLON);
+    return make_continue_stmt(continue_tok);
   }
 
   node* e = expr(cursor);

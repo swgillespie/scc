@@ -18,7 +18,7 @@ static keyword keywords[] = {
   { "sizeof", TOKEN_SIZEOF, 6 }, { "char", TOKEN_CHAR, 4 },
   { "do", TOKEN_DO, 2 },         { "_Bool", TOKEN_BOOL, 5 },
   { "void", TOKEN_VOID, 4 },     { "break", TOKEN_BREAK, 5 },
-  { "extern", TOKEN_EXTERN, 6 },
+  { "extern", TOKEN_EXTERN, 6 }, { "continue", TOKEN_CONTINUE, 8 }
 };
 
 void

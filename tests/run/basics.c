@@ -100,6 +100,13 @@ loops()
   u--;
   ASSERT_EQ(u, 4);
   return 0;
+
+  int _a = 0;
+  for (int i = 0; i < 5; i++) {
+    continue;
+    _a++;
+  }
+  ASSERT_EQ(_a, 0);
 }
 
 int
