@@ -456,6 +456,30 @@ make_call(token* tok, char* name, node* args, type* ret_ty)
   return n;
 }
 
+static node*
+make_postincrement(token* tok, node* base)
+{
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_POSTINCREMENT;
+  n->tok = tok;
+  n->ty = base->ty;
+  n->u.postincrement.arg = base;
+  return n;
+}
+
+static node*
+make_postdecrement(token* tok, node* base)
+{
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_POSTDECREMENT;
+  n->tok = tok;
+  n->ty = base->ty;
+  n->u.postdecrement.arg = base;
+  return n;
+}
+
 static token*
 eat(token** cursor, token_kind kind)
 {
@@ -1038,13 +1062,7 @@ postfix_expr(token** cursor)
         error_at(*cursor, "lvalue required as increment operand");
       }
 
-      // rough desugar into "base = base + 1", where lhs base is evaluated
-      // in an lvalue context and rhs base in a rvalue context
-      return make_node_assign(
-        candidate,
-        base,
-        make_add_or_sub(
-          BINOP_ADD, candidate, base, make_node_const(candidate, ty_int, 1)));
+      return make_postincrement(candidate, base);
     }
 
     if (equal(cursor, TOKEN_MINUS_MINUS)) {
@@ -1053,13 +1071,7 @@ postfix_expr(token** cursor)
         error_at(*cursor, "lvalue required as decrement operand");
       }
 
-      // rough desugar into "base = base - 1", where lhs base is evaluated
-      // in an lvalue context and rhs base in a rvalue context
-      return make_node_assign(
-        candidate,
-        base,
-        make_add_or_sub(
-          BINOP_SUB, candidate, base, make_node_const(candidate, ty_int, 1)));
+      return make_postdecrement(candidate, base);
     }
 
     if (equal(cursor, TOKEN_LPAREN)) {

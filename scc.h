@@ -190,6 +190,8 @@ typedef enum node_kind
   NODE_BREAK,
   NODE_CONTINUE,
   NODE_ARG,
+  NODE_POSTINCREMENT,
+  NODE_POSTDECREMENT,
   /* Control flow */
   NODE_IF,
   /* TODO: it's probably possible to unify the two loop nodes */
@@ -280,6 +282,14 @@ typedef struct node
     {
       int count;
     } arg;
+    struct
+    {
+      struct node* arg;
+    } postincrement;
+    struct
+    {
+      struct node* arg;
+    } postdecrement;
   } u;
 } node;
 

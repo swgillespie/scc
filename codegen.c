@@ -144,6 +144,8 @@ load(type* ty)
 /**
  * Pops a value and an lvalue address off of the stack and stores the value into
  * the lvalue address.
+ *
+ * Trashes rdi and rax.
  */
 static void
 store(type* ty)
@@ -166,6 +168,16 @@ store(type* ty)
       printf("  mov %%rax, (%%rdi)\n");
       break;
   }
+}
+
+/**
+ * Duplicates the element at the top of the stack and pushes it onto the stack.
+ */
+static void
+dup(void)
+{
+  printf("  mov (%%rsp), %%rax\n\n");
+  push("rax");
 }
 
 void
@@ -388,6 +400,24 @@ codegen_expr(node* n)
 
     const char* arg = argument_regs[n->u.arg.count];
     push(arg);
+  }
+
+  if (n->kind == NODE_POSTINCREMENT || n->kind == NODE_POSTDECREMENT) {
+    codegen_lvalue_addr(n->u.postincrement.arg); // [addr]
+    dup();                                       // [addr, addr]
+    load(n->ty);                                 //
+    push("rax");                                 // [addr, value], rax = value
+    if (n->kind == NODE_POSTINCREMENT) {
+      printf("  add $1, %%rax\n"); // [addr, value], rax = value + 1
+    } else {
+      printf("  sub $1, %%rax\n"); // [addr, value], rax = value + 1
+    }
+    pop("rdx");   // [addr], rax = value + 1, rdi = value
+    pop("rsi");   // [], rax = value + 1, rdi = value, rsi = addr
+    push("rax");  // [value + 1], rdi = value, rsi = addr
+    push("rsi");  // [value + 1, addr], rdi = value
+    store(n->ty); // [], rdi = value
+    push("rdx");  // [value]
   }
 }
 

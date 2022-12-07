@@ -99,7 +99,6 @@ loops()
   int u = 5;
   u--;
   ASSERT_EQ(u, 4);
-  return 0;
 
   int _a = 0;
   for (int i = 0; i < 5; i++) {
@@ -107,6 +106,11 @@ loops()
     _a++;
   }
   ASSERT_EQ(_a, 0);
+
+  int _b = 0;
+  int _c = _b++;
+  ASSERT_EQ(_c, 0);
+  ASSERT_EQ(_b, 1);
 }
 
 int
