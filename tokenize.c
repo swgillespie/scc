@@ -12,13 +12,14 @@ typedef struct keyword
 } keyword;
 
 static keyword keywords[] = {
-  { "int", TOKEN_INT, 3 },       { "return", TOKEN_RETURN, 6 },
-  { "if", TOKEN_IF, 2 },         { "else", TOKEN_ELSE, 4 },
-  { "for", TOKEN_FOR, 3 },       { "while", TOKEN_WHILE, 5 },
-  { "sizeof", TOKEN_SIZEOF, 6 }, { "char", TOKEN_CHAR, 4 },
-  { "do", TOKEN_DO, 2 },         { "_Bool", TOKEN_BOOL, 5 },
-  { "void", TOKEN_VOID, 4 },     { "break", TOKEN_BREAK, 5 },
-  { "extern", TOKEN_EXTERN, 6 }, { "continue", TOKEN_CONTINUE, 8 }
+  { "int", TOKEN_INT, 3 },         { "return", TOKEN_RETURN, 6 },
+  { "if", TOKEN_IF, 2 },           { "else", TOKEN_ELSE, 4 },
+  { "for", TOKEN_FOR, 3 },         { "while", TOKEN_WHILE, 5 },
+  { "sizeof", TOKEN_SIZEOF, 6 },   { "char", TOKEN_CHAR, 4 },
+  { "do", TOKEN_DO, 2 },           { "_Bool", TOKEN_BOOL, 5 },
+  { "void", TOKEN_VOID, 4 },       { "break", TOKEN_BREAK, 5 },
+  { "extern", TOKEN_EXTERN, 6 },   { "continue", TOKEN_CONTINUE, 8 },
+  { "typedef", TOKEN_TYPEDEF, 7 },
 };
 
 void

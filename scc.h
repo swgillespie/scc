@@ -30,6 +30,7 @@ typedef enum
   TOKEN_CONTINUE,
   TOKEN_VOID,
   TOKEN_EXTERN,
+  TOKEN_TYPEDEF,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
@@ -109,6 +110,16 @@ typedef struct type
    */
   int size;
 
+  /**
+   * If this type is a typedef, the aliased type.
+   */
+  struct type* aka;
+
+  /**
+   * If this type is a typedef, the name of the typedef identifier.
+   */
+  struct token* aka_name;
+
   union
   {
     /**
@@ -153,6 +164,9 @@ make_array_type(type* base, int len);
 
 type*
 make_function_type(type* ret, parameter* params);
+
+type*
+make_typedef(token* aka_name, type* aka);
 
 char*
 type_name(type* ty);
@@ -304,6 +318,7 @@ typedef enum storage_class
 {
   STORAGE_CLASS_NONE,
   STORAGE_CLASS_EXTERN,
+  STORAGE_CLASS_TYPEDEF,
 } storage_class;
 
 typedef enum symbol_kind

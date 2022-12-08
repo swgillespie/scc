@@ -11,12 +11,24 @@ static symbol* current_function;
 static symbol* symbols;
 
 /**
+ * A type symbol is a symbol representing a type (introduced by e.g. typedef,
+ * struct, or union).
+ */
+typedef struct type_symbol
+{
+  struct type_symbol* next;
+  char* name;
+  type* ty;
+} type_symbol;
+
+/**
  * Lexical scope management
  */
 typedef struct scope
 {
   struct scope* next;
   struct symbol* symbols;
+  struct type_symbol* type_symbols;
 } scope;
 
 static scope* current_scope;
@@ -44,6 +56,13 @@ define(symbol* sym)
   current_scope->symbols = sym;
 }
 
+static void
+define_type(type_symbol* sym)
+{
+  sym->next = current_scope->type_symbols;
+  current_scope->type_symbols = sym;
+}
+
 /**
  * 0 if we are not in a loop or breakable expr (switch), >1 if we are. Used for
  * detecting if a "break" or "continue" is valid.
@@ -67,6 +86,16 @@ static int
 in_loop(void)
 {
   return loop_depth > 0;
+}
+
+static type_symbol*
+make_type_symbol(token* tok, type* ty)
+{
+  type_symbol* sym = malloc(sizeof(type_symbol));
+  memset(sym, 0, sizeof(type_symbol));
+  sym->name = strndup(tok->pos, tok->len);
+  sym->ty = ty;
+  return sym;
 }
 
 static symbol*
@@ -592,6 +621,22 @@ decl_type_name(token** cursor)
 static int
 can_start_type_name(token** cursor)
 {
+  // C is quite ambiguous; an identifier can begin a decl, but only if that
+  // identifier refers to a typedef.
+  if (peek(cursor, TOKEN_IDENT)) {
+    token* name = *cursor;
+    for (scope* s = current_scope; s; s = s->next) {
+      for (type_symbol* sym = s->type_symbols; sym; sym = sym->next) {
+        if (strncmp(name->pos, sym->name, name->len) == 0 &&
+            name->len == strlen(sym->name)) {
+          return 1;
+        }
+      }
+    }
+
+    return 0;
+  }
+
   return peek(cursor, TOKEN_CHAR) || peek(cursor, TOKEN_INT) ||
          peek(cursor, TOKEN_BOOL) || peek(cursor, TOKEN_VOID);
 }
@@ -1340,6 +1385,41 @@ declaration_specifiers(token** cursor, storage_class* storage)
       continue;
     }
 
+    if (equal(cursor, TOKEN_TYPEDEF)) {
+      if (!storage) {
+        error_at(*cursor, "storage class not permitted here");
+      }
+
+      if (*storage != STORAGE_CLASS_NONE) {
+        error_at(*cursor, "more than one storage class not permitted");
+      }
+
+      *storage = STORAGE_CLASS_TYPEDEF;
+      continue;
+    }
+
+    if (peek(cursor, TOKEN_IDENT)) {
+      // C11 has an ambiguity here about whether or not this identifier is the
+      // name of a decl to follow or a typedef that describes the decl. We
+      // partially resolve the ambiguity here by assuming that this identifier
+      // is the decl name if a typespec has already been parsed.
+      if (!type_spec) {
+        // A reference to a typedef.
+        token* name = eat(cursor, TOKEN_IDENT);
+        for (scope* s = current_scope; s; s = s->next) {
+          for (type_symbol* sym = s->type_symbols; sym; sym = sym->next) {
+            if (strncmp(name->pos, sym->name, name->len) == 0 &&
+                name->len == strlen(sym->name)) {
+              type_spec = sym->ty;
+              return type_spec;
+            }
+          }
+        }
+
+        error_at(name, "unknown type name `%s`", strndup(name->pos, name->len));
+      }
+    }
+
     break;
   }
 
@@ -1374,11 +1454,23 @@ external_declaration(token** cursor)
   type* declspec = declaration_specifiers(cursor, &storage);
   token* decl = declarator(cursor, &declspec);
   if (equal(cursor, TOKEN_EQUAL)) {
+    if (storage == STORAGE_CLASS_TYPEDEF) {
+      error_at(decl, "illegal initializer for typedef");
+    }
     error_at(*cursor, "nyi: global decl initializers");
+  }
+
+  if (storage == STORAGE_CLASS_TYPEDEF) {
+    type_symbol* sym = make_type_symbol(decl, make_typedef(decl, declspec));
+    define_type(sym);
   }
 
   if (peek(cursor, TOKEN_LBRACE)) {
     // This is a function definition.
+    if (storage == STORAGE_CLASS_TYPEDEF) {
+      error_at(decl, "function definition declared `typedef`");
+    }
+
     current_function = make_symbol_function(decl, declspec);
     define(current_function);
     current_function->linkage = LINKAGE_INTERNAL;

@@ -10,6 +10,7 @@ type*
 make_pointer_type(type* base)
 {
   type* t = malloc(sizeof(type));
+  memset(t, 0, sizeof(type));
   t->kind = TYPE_POINTER;
   t->base = base;
   t->size = 8 /* pointers are always 8 for this 64-bit compiler */;
@@ -20,6 +21,7 @@ type*
 make_array_type(type* base, int len)
 {
   type* t = malloc(sizeof(type));
+  memset(t, 0, sizeof(type));
   t->kind = TYPE_ARRAY;
   t->base = base;
   t->u.array_length = len;
@@ -31,15 +33,34 @@ type*
 make_function_type(type* ret, parameter* params)
 {
   type* t = malloc(sizeof(type));
+  memset(t, 0, sizeof(type));
   t->kind = TYPE_FUNCTION;
   t->u.function.ret = ret;
   t->u.function.params = params;
   return t;
 }
 
+type*
+make_typedef(token* name, type* ty)
+{
+  type* t = malloc(sizeof(type));
+  memset(t, 0, sizeof(type));
+  memcpy(t, ty, sizeof(type));
+  t->aka = ty;
+  t->aka_name = name;
+  return t;
+}
+
 static void
 type_name_to_stream(type* ty, FILE* stream)
 {
+  if (ty->aka) {
+    fprintf(stream, "%s (aka `", strndup(ty->aka_name->pos, ty->aka_name->len));
+    type_name_to_stream(ty->aka, stream);
+    fprintf(stream, "`)");
+    return;
+  }
+
   switch (ty->kind) {
     case TYPE_VOID:
       fputs("void", stream);
