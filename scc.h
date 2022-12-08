@@ -378,6 +378,31 @@ parse(token** cursor);
 void
 codegen(symbol* sym);
 
+/*
+ * builtins.c - Management for builtin functions
+ */
+
+typedef struct builtin_function
+{
+  /**
+   * The name of this builtin.
+   */
+  char* name;
+
+  /**
+   * The type of this builtin.
+   */
+  type* (*ty)(void);
+
+  /**
+   * Generates code for this builtin given a list of arguments.
+   */
+  void (*codegen)(node*);
+} builtin_function;
+
+builtin_function*
+builtin_lookup(char* name);
+
 /**
  * Miscellaneous utility routines
  */

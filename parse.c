@@ -1161,9 +1161,21 @@ postfix_expr(token** cursor)
       char* name;
       type* ret_ty = ty_int;
       if (!base->u.symbol_ref) {
-        /* it's clowny as hell that this is only a warning, that's C for you */
+        // This can be one of two things: a compiler builtin, or an unbound
+        // identifier.
+        //
+        // C permits calling unbound identifiers, so we'll defer to the code
+        // generator to sort that out. All unbound identifiers are assumed to be
+        // functions that take no parameters and return an int.
+        //
+        // Compiler builtins have their own signature that can be checked here.
         name = strndup(base->tok->pos, base->tok->len);
-        warn_at(base->tok, "implicit declaration of function `%s`", name);
+        builtin_function* builtin = builtin_lookup(name);
+        if (!builtin) {
+          warn_at(base->tok, "implicit declaration of function `%s`", name);
+        } else {
+          // TODO(check) parameter assignability checking
+        }
       } else {
         name = base->u.symbol_ref->name;
         if (base->u.symbol_ref->ty->kind != TYPE_FUNCTION) {
@@ -1422,10 +1434,10 @@ declaration_specifiers(token** cursor, storage_class* storage)
     }
 
     if (peek(cursor, TOKEN_IDENT)) {
-      // C11 has an ambiguity here about whether or not this identifier is the
-      // name of a decl to follow or a typedef that describes the decl. We
-      // partially resolve the ambiguity here by assuming that this identifier
-      // is the decl name if a typespec has already been parsed.
+      // C11 has an ambiguity here about whether or not this identifier is
+      // the name of a decl to follow or a typedef that describes the decl.
+      // We partially resolve the ambiguity here by assuming that this
+      // identifier is the decl name if a typespec has already been parsed.
       if (!type_spec) {
         // A reference to a typedef.
         token* name = eat(cursor, TOKEN_IDENT);
@@ -1494,8 +1506,8 @@ external_declaration(token** cursor)
     define(current_function);
     current_function->linkage = LINKAGE_INTERNAL;
 
-    // Declare locals for every parameter of this function and initialize them
-    // with their corresponding function argument.
+    // Declare locals for every parameter of this function and initialize
+    // them with their corresponding function argument.
     int arg_count = 0;
     node parameter_inits = { 0 };
     node* parameter_cursor = &parameter_inits;
