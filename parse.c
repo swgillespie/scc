@@ -63,6 +63,21 @@ define_type(type_symbol* sym)
   current_scope->type_symbols = sym;
 }
 
+static type_symbol*
+scope_lookup_type(token* name)
+{
+  for (scope* s = current_scope; s; s = s->next) {
+    for (type_symbol* sym = s->type_symbols; sym; sym = sym->next) {
+      if (strncmp(name->pos, sym->name, name->len) == 0 &&
+          name->len == strlen(sym->name)) {
+        return sym;
+      }
+    }
+  }
+
+  return NULL;
+}
+
 /**
  * 0 if we are not in a loop or breakable expr (switch), >1 if we are. Used for
  * detecting if a "break" or "continue" is valid.
@@ -624,14 +639,8 @@ can_start_type_name(token** cursor)
   // C is quite ambiguous; an identifier can begin a decl, but only if that
   // identifier refers to a typedef.
   if (peek(cursor, TOKEN_IDENT)) {
-    token* name = *cursor;
-    for (scope* s = current_scope; s; s = s->next) {
-      for (type_symbol* sym = s->type_symbols; sym; sym = sym->next) {
-        if (strncmp(name->pos, sym->name, name->len) == 0 &&
-            name->len == strlen(sym->name)) {
-          return 1;
-        }
-      }
+    if (scope_lookup_type(*cursor)) {
+      return 1;
     }
 
     return 0;
@@ -1082,11 +1091,25 @@ unary_expr(token** cursor)
      *   2. The size in bytes required to store an instance of x, where x is a
      * type
      *
-     * Form 1 doesn't require parens, form 2 does. We only handle form 1 for
-     * now.
+     * Form 1 requires parens, which we can use to disambiguate part of this
+     * parse.
      */
-    node* expr = unary_expr(cursor);
-    return make_node_const(unop_tok, ty_int, expr->ty->size);
+    node* sizeof_arg;
+    if (equal(cursor, TOKEN_LPAREN)) {
+      // The next token might be an identifier and, if it is, it might be a
+      // type. If it is, we'll parse form 2.
+      if (can_start_type_name(cursor)) {
+        type* ty = decl_type_name(cursor);
+        eat(cursor, TOKEN_RPAREN);
+        return make_node_const(unop_tok, ty_int, ty->size);
+      } else {
+        sizeof_arg = expr(cursor);
+        eat(cursor, TOKEN_RPAREN);
+      }
+    } else {
+      sizeof_arg = unary_expr(cursor);
+    }
+    return make_node_const(unop_tok, ty_int, sizeof_arg->ty->size);
   }
 
   return postfix_expr(cursor);
@@ -1406,14 +1429,10 @@ declaration_specifiers(token** cursor, storage_class* storage)
       if (!type_spec) {
         // A reference to a typedef.
         token* name = eat(cursor, TOKEN_IDENT);
-        for (scope* s = current_scope; s; s = s->next) {
-          for (type_symbol* sym = s->type_symbols; sym; sym = sym->next) {
-            if (strncmp(name->pos, sym->name, name->len) == 0 &&
-                name->len == strlen(sym->name)) {
-              type_spec = sym->ty;
-              return type_spec;
-            }
-          }
+        type_symbol* type_sym = scope_lookup_type(name);
+        if (type_sym) {
+          type_spec = type_sym->ty;
+          return type_spec;
         }
 
         error_at(name, "unknown type name `%s`", strndup(name->pos, name->len));

@@ -7,7 +7,8 @@ OBJECTS := $(SOURCES:.c=.o)
 TEST_SOURCES := tests/run/arith.c \
 	tests/run/basics.c \
 	tests/run/pointers.c \
-	tests/run/calls.c
+	tests/run/calls.c \
+	tests/run/types.c
 
 TEST_EXES := $(basename $(TEST_SOURCES))
 
