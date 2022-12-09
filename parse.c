@@ -19,6 +19,9 @@ typedef struct type_symbol
   struct type_symbol* next;
   char* name;
   type* ty;
+  // Whether this type is a `struct`, and must be prefixed with the `struct`
+  // keyword
+  int is_struct;
 } type_symbol;
 
 /**
@@ -63,11 +66,25 @@ define_type(type_symbol* sym)
   current_scope->type_symbols = sym;
 }
 
+typedef enum type_lookup_scope
+{
+  TYPE_SCOPE_TYPEDEF,
+  TYPE_SCOPE_STRUCT,
+} type_lookup_scope;
+
 static type_symbol*
-scope_lookup_type(token* name)
+scope_lookup_type(token* name, type_lookup_scope tls)
 {
   for (scope* s = current_scope; s; s = s->next) {
     for (type_symbol* sym = s->type_symbols; sym; sym = sym->next) {
+      if (tls == TYPE_SCOPE_TYPEDEF && sym->is_struct) {
+        continue;
+      }
+
+      if (tls == TYPE_SCOPE_STRUCT && !sym->is_struct) {
+        continue;
+      }
+
       if (strncmp(name->pos, sym->name, name->len) == 0 &&
           name->len == strlen(sym->name)) {
         return sym;
@@ -108,7 +125,9 @@ make_type_symbol(token* tok, type* ty)
 {
   type_symbol* sym = malloc(sizeof(type_symbol));
   memset(sym, 0, sizeof(type_symbol));
-  sym->name = strndup(tok->pos, tok->len);
+  if (tok) {
+    sym->name = strndup(tok->pos, tok->len);
+  }
   sym->ty = ty;
   return sym;
 }
@@ -639,7 +658,7 @@ can_start_type_name(token** cursor)
   // C is quite ambiguous; an identifier can begin a decl, but only if that
   // identifier refers to a typedef.
   if (peek(cursor, TOKEN_IDENT)) {
-    if (scope_lookup_type(*cursor)) {
+    if (scope_lookup_type(*cursor, TYPE_SCOPE_TYPEDEF)) {
       return 1;
     }
 
@@ -647,7 +666,8 @@ can_start_type_name(token** cursor)
   }
 
   return peek(cursor, TOKEN_CHAR) || peek(cursor, TOKEN_INT) ||
-         peek(cursor, TOKEN_BOOL) || peek(cursor, TOKEN_VOID);
+         peek(cursor, TOKEN_BOOL) || peek(cursor, TOKEN_VOID) ||
+         peek(cursor, TOKEN_STRUCT);
 }
 
 /**
@@ -1360,6 +1380,70 @@ declarator(token** cursor, type** base)
 }
 
 /*
+ * struct-or-union-specifier ::=
+ *	struct-or-union identifier? "{" struct-declaration-list "}"
+ *	struct-or-union identifier
+ *
+ * struct-declaration-list ::=
+ *	struct-declaration
+ *	struct-declaration-list struct-declaration
+ *
+ * struct-declaration ::=
+ *  specifier-qualifier-list struct-declarator-list ";"
+ */
+static type*
+struct_specifier(token** cursor)
+{
+  // 6.7.2.1 Structure and union specifiers
+  token* struct_tok = eat(cursor, TOKEN_STRUCT);
+  token* name = NULL;
+  if (peek(cursor, TOKEN_IDENT)) {
+    name = eat(cursor, TOKEN_IDENT);
+  }
+
+  if (equal(cursor, TOKEN_LBRACE)) {
+    field head = { 0 };
+    field* fields = &head;
+    int offset = 0;
+    while (!equal(cursor, TOKEN_RBRACE)) {
+      // Struct offsets begin at zero and are allocated at 4-byte boundaries.
+      type* declspec = declaration_specifiers(cursor, NULL);
+      token* decl = declarator(cursor, &declspec);
+      eat(cursor, TOKEN_SEMICOLON);
+      if (!declspec->size) {
+        error_at(decl, "field has incomplete type `%s`", type_name(declspec));
+      }
+
+      int field_offset = offset;
+      offset = (offset + declspec->size + 3) & -4;
+      fields = fields->next = make_field(decl, declspec, field_offset);
+    }
+
+    type* ty = make_struct(name, fields, offset);
+    type_symbol* ty_sym = make_type_symbol(name, ty);
+    ty_sym->is_struct = 1;
+    define_type(ty_sym);
+    return ty;
+  } else if (!name) {
+    // 6.7.2.1.2 - Anonymous structs must have a definition
+    error_at(struct_tok,
+             "declaration of anonymous struct must be a definition");
+  } else {
+    // This can be a forward declaration of a struct or a reference to a
+    // previously-defined struct.
+    type_symbol* ty_sym = scope_lookup_type(name, TYPE_SCOPE_STRUCT);
+    if (ty_sym) {
+      return ty_sym->ty;
+    }
+
+    type* ty = make_struct(name, NULL, 0);
+    type_symbol* new_sym = make_type_symbol(name, ty);
+    new_sym->is_struct = 1;
+    return ty;
+  }
+}
+
+/*
  * declaration-specifiers ::=
  *	storage-class-specifier declaration-specifiers?
  *	type-specifier declaration-specifiers?
@@ -1371,6 +1455,8 @@ declarator(token** cursor, type** base)
  *   "int"
  *   "char"
  *   "_Bool"
+ *   identifier
+ *   struct-or-union-specifier
  * type-qualifier ::= epsilon
  * function-specifier ::= epsilon
  */
@@ -1433,6 +1519,13 @@ declaration_specifiers(token** cursor, storage_class* storage)
       continue;
     }
 
+    if (peek(cursor, TOKEN_STRUCT)) {
+      if (type_spec)
+        error_at(*cursor, "two or more data types in declaration specifier");
+
+      type_spec = struct_specifier(cursor);
+    }
+
     if (peek(cursor, TOKEN_IDENT)) {
       // C11 has an ambiguity here about whether or not this identifier is
       // the name of a decl to follow or a typedef that describes the decl.
@@ -1441,7 +1534,7 @@ declaration_specifiers(token** cursor, storage_class* storage)
       if (!type_spec) {
         // A reference to a typedef.
         token* name = eat(cursor, TOKEN_IDENT);
-        type_symbol* type_sym = scope_lookup_type(name);
+        type_symbol* type_sym = scope_lookup_type(name, TYPE_SCOPE_TYPEDEF);
         if (type_sym) {
           type_spec = type_sym->ty;
           return type_spec;
@@ -1481,9 +1574,14 @@ declaration_specifiers(token** cursor, storage_class* storage)
 static void
 external_declaration(token** cursor)
 {
+  token* start_tok = *cursor;
   storage_class storage = STORAGE_CLASS_NONE;
   type* declspec = declaration_specifiers(cursor, &storage);
-  token* decl = declarator(cursor, &declspec);
+  token* decl = NULL;
+  if (!peek(cursor, TOKEN_SEMICOLON)) {
+    decl = declarator(cursor, &declspec);
+  }
+
   if (equal(cursor, TOKEN_EQUAL)) {
     if (storage == STORAGE_CLASS_TYPEDEF) {
       error_at(decl, "illegal initializer for typedef");
@@ -1529,6 +1627,16 @@ external_declaration(token** cursor)
     symbols = current_function;
   } else if (equal(cursor, TOKEN_SEMICOLON)) {
     // just a decl.
+    if (!decl) {
+      // Anonymous (forward) declarations don't declare anything unless their
+      // decls themselves declare something in the type namespace (e.g. structs)
+      if (declspec->kind != TYPE_STRUCT) {
+        warn_at(start_tok, "declaration does not declare anything");
+      }
+
+      return;
+    }
+
     symbol* sym;
     if (declspec->kind == TYPE_FUNCTION) {
       sym = make_symbol_function(decl, declspec);

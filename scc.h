@@ -34,6 +34,7 @@ typedef enum
   TOKEN_VOID,
   TOKEN_EXTERN,
   TOKEN_TYPEDEF,
+  TOKEN_STRUCT,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
@@ -97,7 +98,19 @@ typedef enum type_kind
   TYPE_VOID,
   TYPE_FUNCTION,
   TYPE_ARRAY,
+  TYPE_STRUCT,
 } type_kind;
+
+/**
+ * A field within a struct or union.
+ */
+typedef struct field
+{
+  struct field* next;
+  token* name;
+  struct type* ty;
+  int offset;
+} field;
 
 typedef struct type
 {
@@ -144,6 +157,11 @@ typedef struct type
        */
       int is_vararg;
     } function;
+    struct
+    {
+      token* name;
+      field* fields;
+    } aggregate;
   } u;
 } type;
 
@@ -170,6 +188,12 @@ make_function_type(type* ret, parameter* params);
 
 type*
 make_typedef(token* aka_name, type* aka);
+
+field*
+make_field(token* name, type* ty, int offset);
+
+type*
+make_struct(token* name, field* fields, int size);
 
 char*
 type_name(type* ty);

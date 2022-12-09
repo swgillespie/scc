@@ -51,6 +51,29 @@ make_typedef(token* name, type* ty)
   return t;
 }
 
+field*
+make_field(token* name, type* ty, int offset)
+{
+  field* f = malloc(sizeof(field));
+  memset(f, 0, sizeof(field));
+  f->name = name;
+  f->ty = ty;
+  f->offset = offset;
+  return f;
+}
+
+type*
+make_struct(token* name, field* fields, int size)
+{
+  type* t = malloc(sizeof(type));
+  memset(t, 0, sizeof(type));
+  t->kind = TYPE_STRUCT;
+  t->size = size;
+  t->u.aggregate.name = name;
+  t->u.aggregate.fields = fields;
+  return t;
+}
+
 static void
 type_name_to_stream(type* ty, FILE* stream)
 {
@@ -92,6 +115,11 @@ type_name_to_stream(type* ty, FILE* stream)
     case TYPE_POINTER:
       type_name_to_stream(ty->base, stream);
       fputc('*', stream);
+      return;
+    case TYPE_STRUCT:
+      fprintf(stream,
+              "struct %s",
+              strndup(ty->u.aggregate.name->pos, ty->u.aggregate.name->len));
       return;
   }
 }

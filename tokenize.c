@@ -19,7 +19,7 @@ static keyword keywords[] = {
   { "do", TOKEN_DO, 2 },           { "_Bool", TOKEN_BOOL, 5 },
   { "void", TOKEN_VOID, 4 },       { "break", TOKEN_BREAK, 5 },
   { "extern", TOKEN_EXTERN, 6 },   { "continue", TOKEN_CONTINUE, 8 },
-  { "typedef", TOKEN_TYPEDEF, 7 },
+  { "typedef", TOKEN_TYPEDEF, 7 }, { "struct", TOKEN_STRUCT, 6 },
 };
 
 void
@@ -418,7 +418,7 @@ vdiagnostic_at(token* tok, const char* prefix, const char* fmt, va_list args)
 
   // We've stopped midway through a line - advance the cursor to the end of
   // the line.
-  while (*c++ != '\n')
+  while (*c++ != '\n' && *c++ != '\0')
     ;
 
   // Don't print the last newline.
