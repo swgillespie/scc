@@ -381,8 +381,21 @@ make_logical_and(token* tok, node* left, node* right)
   n->kind = NODE_AND;
   n->ty = ty_int;
   n->tok = tok;
-  n->u.and_.left = left;
-  n->u.and_.right = right;
+  n->u.logic_binop.left = left;
+  n->u.logic_binop.right = right;
+  return n;
+}
+
+static node*
+make_logical_or(token* tok, node* left, node* right)
+{
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_OR;
+  n->ty = ty_int;
+  n->tok = tok;
+  n->u.logic_binop.left = left;
+  n->u.logic_binop.right = right;
   return n;
 }
 
@@ -727,6 +740,9 @@ static node*
 unary_expr(token**);
 
 static node*
+logical_or_expr(token**);
+
+static node*
 logical_and_expr(token**);
 
 static type*
@@ -825,7 +841,7 @@ stmt(token** cursor)
       error_at(case_tok, "case outside of switch statement");
     }
 
-    node* case_cond = logical_and_expr(cursor);
+    node* case_cond = logical_or_expr(cursor);
     eat(cursor, TOKEN_COLON);
 
     // Labeled statements require a statement to follow it.
@@ -1091,7 +1107,7 @@ static node*
 assignment_expr(token** cursor)
 {
   // TODO - enforce that this expression produces an lvalue
-  node* base = logical_and_expr(cursor);
+  node* base = logical_or_expr(cursor);
   for (;;) {
     token* eq_tok = *cursor;
     if (equal(cursor, TOKEN_EQUAL)) {
@@ -1101,6 +1117,28 @@ assignment_expr(token** cursor)
 
     return base;
   }
+}
+
+/**
+ * logical-OR-expression ::=
+ *  logical-AND-expression
+ *  logical-OR-expression "||" logical-AND-expression
+ */
+static node*
+logical_or_expr(token** cursor)
+{
+  node* base = logical_and_expr(cursor);
+  for (;;) {
+    token* op_tok = *cursor;
+    if (equal(cursor, TOKEN_DOUBLE_PIPE)) {
+      base = make_logical_or(op_tok, base, logical_or_expr(cursor));
+      continue;
+    }
+
+    break;
+  }
+
+  return base;
 }
 
 /**

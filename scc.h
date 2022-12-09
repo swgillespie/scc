@@ -69,6 +69,8 @@ typedef enum
   TOKEN_GT_EQ,
   TOKEN_AMPERSAND,
   TOKEN_DOUBLE_AMPERSAND,
+  TOKEN_PIPE,
+  TOKEN_DOUBLE_PIPE,
   TOKEN_COMMA,
   TOKEN_DOT,
   TOKEN_ARROW,
@@ -249,6 +251,7 @@ typedef enum node_kind
   NODE_DEREF,
   NODE_CALL,
   NODE_AND,
+  NODE_OR,
   NODE_CONV,
   NODE_BREAK,
   NODE_CONTINUE,
@@ -340,7 +343,7 @@ typedef struct node
     {
       struct node* left;
       struct node* right;
-    } and_;
+    } logic_binop;
     struct
     {
       struct node* value;

@@ -418,16 +418,32 @@ codegen_expr(node* n)
   if (n->kind == NODE_AND) {
     int label_idx = gen_label();
     char* label = gen_label_name(".L.and", label_idx);
-    codegen_expr(n->u.and_.left);
+    codegen_expr(n->u.logic_binop.left);
     pop("rax");
     emit("  cmp $0, %%rax\n");
     emit("  je %s\n", label);
-    codegen_expr(n->u.and_.right);
+    codegen_expr(n->u.logic_binop.right);
     pop("rax");
     emit("  cmp $0, %%rax\n");
     emit("  setne %%al\n");
     emit("  movzb %%al, %%eax\n");
     emit("%s:\n", label);
+    push("rax");
+  }
+
+  if (n->kind == NODE_OR) {
+    int label_idx = gen_label();
+    char* label = gen_label_name(".L.or", label_idx);
+    codegen_expr(n->u.logic_binop.left);
+    pop("rax");
+    emit("  cmp $0, %%rax\n");
+    emit("  jne %s\n", label);
+    codegen_expr(n->u.logic_binop.right);
+    pop("rax");
+    emit("  cmp $0, %%rax\n");
+    emit("%s:\n", label);
+    emit("  setne %%al\n");
+    emit("  movzb %%al, %%eax\n");
     push("rax");
   }
 

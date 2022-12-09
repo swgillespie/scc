@@ -211,6 +211,16 @@ tokenize(void)
         }
 
         break;
+      case '|':
+        if (*++c == '|') {
+          cursor->next = make_token(TOKEN_DOUBLE_PIPE, c - 1, 2);
+          c++;
+        } else {
+          cursor->next = make_token(TOKEN_PIPE, c, 1);
+        }
+
+        break;
+
       case ',':
         cursor->next = make_token(TOKEN_COMMA, c, 1);
         c++;
