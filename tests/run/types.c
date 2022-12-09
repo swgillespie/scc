@@ -51,6 +51,22 @@ members()
   int* ptr = &t.x;
   *ptr = 8;
   ASSERT_EQ(t.x, 8);
+
+  struct membertest p;
+  struct membertest* pptr = &p;
+
+  pptr->x = 1;
+  pptr->y = 2;
+  pptr->z = 'c';
+  ASSERT_EQ(pptr->x, 1);
+  ASSERT_EQ(p.x, 1);
+  ASSERT_EQ(pptr->y, 2);
+  ASSERT_EQ(p.y, 2);
+  ASSERT_EQ(pptr->z, 'c');
+  ASSERT_EQ(p.z, 'c');
+  int* pptr_x = &pptr->x;
+  *pptr_x = 9;
+  ASSERT_EQ(p.x, 9);
 }
 
 int

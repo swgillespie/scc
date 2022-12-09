@@ -66,6 +66,7 @@ typedef enum
   TOKEN_DOUBLE_AMPERSAND,
   TOKEN_COMMA,
   TOKEN_DOT,
+  TOKEN_ARROW,
   TOKEN_ELLIPSIS,
   TOKEN_EOF,
 } token_kind;
@@ -238,6 +239,7 @@ typedef enum node_kind
   NODE_POSTINCREMENT,
   NODE_POSTDECREMENT,
   NODE_MEMBER,
+  NODE_MEMBER_DEREF,
   /* Control flow */
   NODE_IF,
   /* TODO: it's probably possible to unify the two loop nodes */

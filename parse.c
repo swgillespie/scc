@@ -556,6 +556,19 @@ make_member(token* tok, node* base, field* field)
   return n;
 }
 
+static node*
+make_member_deref(token* tok, node* base, field* field)
+{
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_MEMBER_DEREF;
+  n->tok = tok;
+  n->ty = field->ty;
+  n->u.member.base = base;
+  n->u.member.field = field;
+  return n;
+}
+
 static token*
 eat(token** cursor, token_kind kind)
 {
@@ -1078,7 +1091,7 @@ mul_expr(token** cursor)
 static int
 is_lvalue(node* n)
 {
-  if (n->kind == NODE_MEMBER) {
+  if (n->kind == NODE_MEMBER || n->kind == NODE_MEMBER_DEREF) {
     return is_lvalue(n->u.member.base);
   }
 
@@ -1276,6 +1289,25 @@ postfix_expr(token** cursor)
       }
 
       base = make_member(candidate, base, member);
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_ARROW)) {
+      if (!base->ty->base) {
+        error_at(base->tok,
+                 "left-hand-side of member deref expression is not a pointer");
+      }
+
+      token* field_name = eat(cursor, TOKEN_IDENT);
+      field* member = field_lookup(field_name, base->ty->base);
+      if (!member) {
+        error_at(field_name,
+                 "no such field `%s` in struct type `%s`",
+                 strndup(field_name->pos, field_name->len),
+                 type_name(base->ty->base));
+      }
+
+      base = make_member_deref(candidate, base, member);
       continue;
     }
 

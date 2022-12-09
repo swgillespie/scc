@@ -215,11 +215,19 @@ codegen_lvalue_addr(node* n)
       break;
     case NODE_MEMBER:
       codegen_lvalue_addr(n->u.member.base);
-      pop("rax");
       if (n->u.member.field->offset != 0) {
+        pop("rax");
         emit("  add $%d, %%rax\n", n->u.member.field->offset);
+        push("rax");
       }
-      push("rax");
+      break;
+    case NODE_MEMBER_DEREF:
+      codegen_expr(n->u.member.base);
+      if (n->u.member.field->offset != 0) {
+        pop("rax");
+        emit("  add $%d, %%rax\n", n->u.member.field->offset);
+        push("rax");
+      }
       break;
     default:
       error_at(n->tok, "not a lvalue");
@@ -442,18 +450,32 @@ codegen_expr(node* n)
     push("rdx");  // [value]
   }
 
-  if (n->kind == NODE_MEMBER) {
-    // This feels like it's not going to work in general but I suspect it will
-    // for a while.
-    //
+  if (n->kind == NODE_MEMBER || n->kind == NODE_MEMBER_DEREF) {
     // The standard does not require the lhs of a member expression to be an
     // lvalue.
-    codegen_lvalue_addr(n->u.member.base);
-    if (n->u.member.field->offset != 0) {
-      pop("rax");
-      emit("  add $%d, %%rax\n", n->u.member.field->offset);
-      push("rax");
-    }
+    //
+    // However, we do require that the base of a member expression be an lvalue
+    // in the code generator. In cases such as e.g. a function returning a
+    // structure by value, we must allocate a local in the calling function,
+    // ensure the called function stores its return value into the pointer, and
+    // use that local as an lvalue in the calling function.
+    //
+    // For example, in the expression `def().x`, where `def` is a function
+    // returning a struct by value, `def()` is not an lvalue; however, we
+    // codegen def as a function that looks like `void def(struct foo*)`, and
+    // transform the call site to look like:
+    //
+    // ```
+    // struct foo;
+    // def(&foo);
+    // foo.x
+    // ```
+    //
+    // Which preserves our ability to always codegen member base expressions as
+    // lvalues.
+    //
+    // Note that we don't do any of this stuff yet, we'll have to do it later.
+    codegen_lvalue_addr(n);
     load(n->u.member.field->ty);
     push("rax");
   }
