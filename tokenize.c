@@ -212,10 +212,11 @@ tokenize(void)
             cursor->next = make_token(TOKEN_ELLIPSIS, c - 2, 3);
             c++;
           } else {
-            error_at(cursor, "unexpected character");
+            c--;
+            cursor->next = make_token(TOKEN_DOT, c, 1);
           }
         } else {
-          error_at(cursor, "unexpected character");
+          cursor->next = make_token(TOKEN_DOT, c, 1);
         }
 
         break;

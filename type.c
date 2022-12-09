@@ -124,6 +124,20 @@ type_name_to_stream(type* ty, FILE* stream)
   }
 }
 
+field*
+field_lookup(token* name, type* ty)
+{
+  SCC_ASSERT(name, ty->kind == TYPE_STRUCT, "field_lookup on non-struct type");
+  for (field* f = ty->u.aggregate.fields; f; f = f->next) {
+    if (name->len == f->name->len &&
+        strncmp(name->pos, f->name->pos, name->len) == 0) {
+      return f;
+    }
+  }
+
+  return NULL;
+}
+
 char*
 type_name(type* ty)
 {

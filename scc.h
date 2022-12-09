@@ -65,6 +65,7 @@ typedef enum
   TOKEN_AMPERSAND,
   TOKEN_DOUBLE_AMPERSAND,
   TOKEN_COMMA,
+  TOKEN_DOT,
   TOKEN_ELLIPSIS,
   TOKEN_EOF,
 } token_kind;
@@ -198,6 +199,9 @@ make_struct(token* name, field* fields, int size);
 char*
 type_name(type* ty);
 
+field*
+field_lookup(token* name, type* ty);
+
 /**
  * Compares two types and returns a number based on the comparison of the
  * "integer conversion rank" of the two types. Returns -1 if left < right,
@@ -233,6 +237,7 @@ typedef enum node_kind
   NODE_ARG,
   NODE_POSTINCREMENT,
   NODE_POSTDECREMENT,
+  NODE_MEMBER,
   /* Control flow */
   NODE_IF,
   /* TODO: it's probably possible to unify the two loop nodes */
@@ -331,6 +336,11 @@ typedef struct node
     {
       struct node* arg;
     } postdecrement;
+    struct
+    {
+      struct node* base;
+      struct field* field;
+    } member;
   } u;
 } node;
 

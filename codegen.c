@@ -112,6 +112,10 @@ assert_stack_empty(void)
 static void
 load(type* ty)
 {
+  if (ty->kind == TYPE_STRUCT) {
+    ice_at(NULL, "nyi: load of non-scalar type");
+  }
+
   pop("rax");
   /**
    * In C, arrays "decay" to pointers. The identifier reference of an array
@@ -208,6 +212,14 @@ codegen_lvalue_addr(node* n)
       break;
     case NODE_DEREF:
       codegen_expr(n->u.deref_value);
+      break;
+    case NODE_MEMBER:
+      codegen_lvalue_addr(n->u.member.base);
+      pop("rax");
+      if (n->u.member.field->offset != 0) {
+        emit("  add $%d, %%rax\n", n->u.member.field->offset);
+      }
+      push("rax");
       break;
     default:
       error_at(n->tok, "not a lvalue");
@@ -428,6 +440,22 @@ codegen_expr(node* n)
     push("rsi");  // [value + 1, addr], rdi = value
     store(n->ty); // [], rdi = value
     push("rdx");  // [value]
+  }
+
+  if (n->kind == NODE_MEMBER) {
+    // This feels like it's not going to work in general but I suspect it will
+    // for a while.
+    //
+    // The standard does not require the lhs of a member expression to be an
+    // lvalue.
+    codegen_lvalue_addr(n->u.member.base);
+    if (n->u.member.field->offset != 0) {
+      pop("rax");
+      emit("  add $%d, %%rax\n", n->u.member.field->offset);
+      push("rax");
+    }
+    load(n->u.member.field->ty);
+    push("rax");
   }
 }
 

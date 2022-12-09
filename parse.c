@@ -543,6 +543,19 @@ make_postdecrement(token* tok, node* base)
   return n;
 }
 
+static node*
+make_member(token* tok, node* base, field* field)
+{
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_MEMBER;
+  n->tok = tok;
+  n->ty = field->ty;
+  n->u.member.base = base;
+  n->u.member.field = field;
+  return n;
+}
+
 static token*
 eat(token** cursor, token_kind kind)
 {
@@ -1065,6 +1078,10 @@ mul_expr(token** cursor)
 static int
 is_lvalue(node* n)
 {
+  if (n->kind == NODE_MEMBER) {
+    return is_lvalue(n->u.member.base);
+  }
+
   return n->kind == NODE_SYMBOL_REF || n->kind == NODE_DEREF;
 }
 
@@ -1072,6 +1089,7 @@ is_lvalue(node* n)
  * unary_expression
  *   : postfix_expression
  *   | ("*" | "&") unary_expression
+ *   | "." IDENTIFIER
  *   ;
  */
 static node*
@@ -1240,6 +1258,25 @@ postfix_expr(token** cursor)
         "invalid types for array subscript operator (have `%s` and `%s`)",
         type_name(base->ty),
         type_name(subscript->ty));
+    }
+
+    if (equal(cursor, TOKEN_DOT)) {
+      if (base->ty->kind != TYPE_STRUCT) {
+        error_at(base->tok,
+                 "left-hand-side of member expression is not a struct");
+      }
+
+      token* field_name = eat(cursor, TOKEN_IDENT);
+      field* member = field_lookup(field_name, base->ty);
+      if (!member) {
+        error_at(field_name,
+                 "no such field `%s` in struct type `%s`",
+                 strndup(field_name->pos, field_name->len),
+                 type_name(base->ty));
+      }
+
+      base = make_member(candidate, base, member);
+      continue;
     }
 
     return base;
@@ -1419,7 +1456,7 @@ struct_specifier(token** cursor)
       fields = fields->next = make_field(decl, declspec, field_offset);
     }
 
-    type* ty = make_struct(name, fields, offset);
+    type* ty = make_struct(name, head.next, offset);
     type_symbol* ty_sym = make_type_symbol(name, ty);
     ty_sym->is_struct = 1;
     define_type(ty_sym);
