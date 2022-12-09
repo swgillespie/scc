@@ -29,7 +29,7 @@ size_of()
   ASSERT_EQ(sizeof(struct foo), 4);
   ASSERT_EQ(sizeof(struct {
               int y;
-              char y;
+              char z;
             }),
             8);
 }

@@ -1451,6 +1451,17 @@ struct_specifier(token** cursor)
         error_at(decl, "field has incomplete type `%s`", type_name(declspec));
       }
 
+      // This is ugly and quadratic, but who cares. We'll fix it later if it's
+      // an issue.
+      for (field* f = head.next; f; f = f->next) {
+        if (decl->len == f->name->len &&
+            strncmp(decl->pos, f->name->pos, decl->len) == 0) {
+          error_at(decl,
+                   "struct declares duplicate field `%s`",
+                   strndup(decl->pos, decl->len));
+        }
+      }
+
       int field_offset = offset;
       offset = (offset + declspec->size + 3) & -4;
       fields = fields->next = make_field(decl, declspec, field_offset);
