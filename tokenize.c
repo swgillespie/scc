@@ -23,14 +23,8 @@ static keyword keywords[] = {
 };
 
 void
-load_file(const char* filename)
+load_file(const char* filename, FILE* f)
 {
-  FILE* f = fopen(filename, "r");
-  if (!f) {
-    perror("failed to open source file");
-    exit(1);
-  }
-
   source_name = strdup(filename);
   FILE* stream = open_memstream(&source, &source_len);
   for (;;) {

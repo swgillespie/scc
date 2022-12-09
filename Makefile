@@ -29,10 +29,7 @@ test: test-compile test-run
 tests/run/helpers.o: tests/run/helpers.c
 	$(CC) -g -O2 -c -o $@ $<
 
-tests/run/%.preproc.c: tests/run/%.c
-	$(CC) -E -P $< > $@
-
-tests/run/%.s: tests/run/%.preproc.c scc
+tests/run/%.s: tests/run/%.c scc
 	./scc $< > $@
 
 tests/run/%: tests/run/%.s tests/run/helpers.o

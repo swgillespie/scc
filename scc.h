@@ -1,11 +1,14 @@
 #ifndef __SCC_H__
 #define __SCC_H__
 
+#define _GNU_SOURCE
+
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /**
  * tokenize.c - C source tokenizer
@@ -76,7 +79,7 @@ typedef struct token
 } token;
 
 void
-load_file(const char* filename);
+load_file(const char* filename, FILE* f);
 
 token*
 tokenize(void);

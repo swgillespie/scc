@@ -171,10 +171,11 @@ store(type* ty)
 }
 
 /**
- * Duplicates the element at the top of the stack and pushes it onto the stack.
+ * stack_duplicates the element at the top of the stack and pushes it onto the
+ * stack.
  */
 static void
-dup(void)
+stack_dup(void)
 {
   printf("  mov (%%rsp), %%rax\n\n");
   push("rax");
@@ -413,7 +414,7 @@ codegen_expr(node* n)
 
   if (n->kind == NODE_POSTINCREMENT || n->kind == NODE_POSTDECREMENT) {
     codegen_lvalue_addr(n->u.postincrement.arg); // [addr]
-    dup();                                       // [addr, addr]
+    stack_dup();                                 // [addr, addr]
     load(n->ty);                                 //
     push("rax");                                 // [addr, value], rax = value
     if (n->kind == NODE_POSTINCREMENT) {
