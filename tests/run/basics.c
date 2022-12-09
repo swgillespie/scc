@@ -132,6 +132,49 @@ scopes()
   ASSERT_EQ(q, 99);
 }
 
+void
+switches()
+{
+  int x = 4;
+  int res = 0;
+  switch (x) {
+    case 3:
+      res = 1;
+      break;
+    case 4:
+      res = 2;
+      break;
+    default:
+      res = 3;
+      break;
+  }
+
+  ASSERT_EQ(res, 2);
+  x = 0;
+  res = 0;
+  switch (x) {
+    case 0:
+      res++;
+    case 1:
+      res++;
+    case 2:
+      res++;
+  }
+
+  ASSERT_EQ(res, 3);
+  x = 0;
+  res = 0;
+  switch (x) {
+    case 1:
+      res = 1;
+      break;
+    default:
+      res = 2;
+      break;
+  }
+  ASSERT_EQ(res, 2);
+}
+
 int
 main()
 {
@@ -139,6 +182,7 @@ main()
   branches();
   loops();
   scopes();
+  switches();
   puts("basics ok");
   return 0;
 }

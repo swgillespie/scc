@@ -36,6 +36,9 @@ typedef enum
   TOKEN_TYPEDEF,
   TOKEN_STRUCT,
   TOKEN_UNION,
+  TOKEN_SWITCH,
+  TOKEN_CASE,
+  TOKEN_DEFAULT,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
@@ -49,6 +52,7 @@ typedef enum
   TOKEN_RETURN,
   TOKEN_INTEGER,
   TOKEN_SEMICOLON,
+  TOKEN_COLON,
   TOKEN_PLUS,
   TOKEN_PLUS_PLUS,
   TOKEN_MINUS,
@@ -226,6 +230,14 @@ is_arithmetic_type(type* ty);
  * parse.c - Parsing C source into node trees
  */
 
+typedef struct switch_case
+{
+  struct switch_case* next;
+  token* tok;
+  struct node* cond;
+  struct node* label;
+} switch_case;
+
 typedef enum node_kind
 {
   NODE_BINOP,
@@ -245,6 +257,8 @@ typedef enum node_kind
   NODE_POSTDECREMENT,
   NODE_MEMBER,
   NODE_MEMBER_DEREF,
+  NODE_SWITCH,
+  NODE_LABEL,
   /* Control flow */
   NODE_IF,
   /* TODO: it's probably possible to unify the two loop nodes */
@@ -348,6 +362,13 @@ typedef struct node
       struct node* base;
       struct field* field;
     } member;
+    struct
+    {
+      struct node* cond;
+      struct node* body;
+      switch_case* cases;
+    } switch_;
+    char* label_name;
   } u;
 } node;
 
@@ -469,6 +490,12 @@ warn_at(token* tok, const char* fmt, ...);
 
 __attribute__((noreturn)) void
 ice_at(token* tok, const char* fmt, ...);
+
+int
+gen_label(void);
+
+char*
+gen_label_name(char* prefix, int num);
 
 #define SCC_ASSERT(tok, cond, fmt, ...)                                        \
   do {                                                                         \

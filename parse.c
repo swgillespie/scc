@@ -1,5 +1,7 @@
 #include "scc.h"
 
+#define MAX_SWITCH_DEPTH 25
+
 /**
  * The current function being parsed, if any.
  */
@@ -99,6 +101,38 @@ scope_lookup_type(token* name, type_lookup_scope tls)
   }
 
   return NULL;
+}
+
+/**
+ * State for switch statements.
+ */
+
+static int switch_depth;
+static switch_case* switch_stack[MAX_SWITCH_DEPTH];
+
+static void
+push_switch(switch_case* head)
+{
+  switch_stack[switch_depth++] = head;
+}
+
+static void
+pop_switch(void)
+{
+  SCC_ASSERT(NULL, switch_depth > 0, "pop_switch outside of switch");
+  switch_depth--;
+}
+
+static void
+switch_record_case(switch_case* case_)
+{
+  switch_stack[switch_depth - 1] = switch_stack[switch_depth - 1]->next = case_;
+}
+
+static int
+in_switch()
+{
+  return switch_depth > 0;
 }
 
 /**
@@ -461,7 +495,7 @@ make_do_stmt(token* tok, node* body, node* cond)
 static node*
 make_break_stmt(token* tok)
 {
-  if (!in_loop()) {
+  if (!in_loop() && !in_switch()) {
     error_at(tok, "break outside of loop or switch");
   }
 
@@ -575,6 +609,47 @@ make_member_deref(token* tok, node* base, field* field)
   return n;
 }
 
+static node*
+make_switch(token* tok, node* cond, node* body, switch_case* cases)
+{
+  if (!is_arithmetic_type(cond->ty)) {
+    error_at(cond->tok, "switch condition must have integer type");
+  }
+
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_SWITCH;
+  n->tok = tok;
+  n->ty = ty_void;
+  n->u.switch_.cond = cond;
+  n->u.switch_.body = body;
+  n->u.switch_.cases = cases;
+  return n;
+}
+
+static switch_case*
+make_switch_case(token* tok, node* cond, node* label)
+{
+  switch_case* sc = malloc(sizeof(switch_case));
+  memset(sc, 0, sizeof(switch_case));
+  sc->tok = tok;
+  sc->cond = cond;
+  sc->label = label;
+  return sc;
+}
+
+static node*
+make_label(token* tok, char* name)
+{
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_LABEL;
+  n->tok = tok;
+  n->ty = ty_void;
+  n->u.label_name = name;
+  return n;
+}
+
 static token*
 eat(token** cursor, token_kind kind)
 {
@@ -660,6 +735,9 @@ declaration_specifiers(token**, storage_class*);
 static token*
 declarator(token**, type**);
 
+static node*
+switch_stmt(token**);
+
 /**
  * 6.7.7 - Type names
  *
@@ -735,6 +813,47 @@ stmt(token** cursor)
 
   if (peek(cursor, TOKEN_DO)) {
     return do_stmt(cursor);
+  }
+
+  if (peek(cursor, TOKEN_SWITCH)) {
+    return switch_stmt(cursor);
+  }
+
+  if (peek(cursor, TOKEN_CASE)) {
+    token* case_tok = eat(cursor, TOKEN_CASE);
+    if (!in_switch()) {
+      error_at(case_tok, "case outside of switch statement");
+    }
+
+    node* case_cond = logical_and_expr(cursor);
+    eat(cursor, TOKEN_COLON);
+
+    // Labeled statements require a statement to follow it.
+    if (peek(cursor, TOKEN_RBRACE)) {
+      error_at(*cursor, "expected statement");
+    }
+
+    node* label = make_label(case_tok, gen_label_name(".L.case", gen_label()));
+    switch_record_case(make_switch_case(case_tok, case_cond, label));
+    return label;
+  }
+
+  if (peek(cursor, TOKEN_DEFAULT)) {
+    token* default_tok = eat(cursor, TOKEN_DEFAULT);
+    if (!in_switch()) {
+      error_at(default_tok, "default outside of switch statement");
+    }
+
+    eat(cursor, TOKEN_COLON);
+    // Labeled statements require a statement to follow it.
+    if (peek(cursor, TOKEN_RBRACE)) {
+      error_at(*cursor, "expected statement");
+    }
+
+    node* label =
+      make_label(default_tok, gen_label_name(".L.default", gen_label()));
+    switch_record_case(make_switch_case(default_tok, NULL, label));
+    return label;
   }
 
   if (peek(cursor, TOKEN_BREAK)) {
@@ -863,6 +982,20 @@ if_stmt(token** cursor)
   }
 
   return make_if_stmt(if_tok, cond, then, else_);
+}
+
+static node*
+switch_stmt(token** cursor)
+{
+  token* switch_tok = eat(cursor, TOKEN_SWITCH);
+  eat(cursor, TOKEN_LPAREN);
+  node* cond = expr(cursor);
+  eat(cursor, TOKEN_RPAREN);
+  switch_case head = { 0 };
+  push_switch(&head);
+  node* body = stmt(cursor);
+  pop_switch();
+  return make_switch(switch_tok, cond, body, head.next);
 }
 
 /**

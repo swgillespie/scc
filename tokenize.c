@@ -20,7 +20,8 @@ static keyword keywords[] = {
   { "void", TOKEN_VOID, 4 },       { "break", TOKEN_BREAK, 5 },
   { "extern", TOKEN_EXTERN, 6 },   { "continue", TOKEN_CONTINUE, 8 },
   { "typedef", TOKEN_TYPEDEF, 7 }, { "struct", TOKEN_STRUCT, 6 },
-  { "union", TOKEN_UNION, 5 },
+  { "union", TOKEN_UNION, 5 },     { "switch", TOKEN_SWITCH, 6 },
+  { "case", TOKEN_CASE, 4 },       { "default", TOKEN_DEFAULT, 7 },
 };
 
 void
@@ -102,6 +103,10 @@ tokenize(void)
         break;
       case ';':
         cursor->next = make_token(TOKEN_SEMICOLON, c, 1);
+        c++;
+        break;
+      case ':':
+        cursor->next = make_token(TOKEN_COLON, c, 1);
         c++;
         break;
       case '+':

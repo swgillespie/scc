@@ -20,21 +20,33 @@ static char* continue_stack[MAX_LOOP_DEPTH];
 static int continue_stack_len = 0;
 
 static void
-push_loop_labels(char* break_label, char* continue_label)
+push_break(char* break_label)
 {
   SCC_ASSERT(NULL, break_stack_len < MAX_LOOP_DEPTH, "break stack overflow");
+  break_stack[break_stack_len++] = break_label;
+}
+
+static void
+pop_break(void)
+{
+  SCC_ASSERT(NULL, break_stack_len > 0, "pop from empty break stack");
+  break_stack_len--;
+}
+
+static void
+push_loop_labels(char* break_label, char* continue_label)
+{
   SCC_ASSERT(
     NULL, continue_stack_len < MAX_LOOP_DEPTH, "continue stack overflow");
-  break_stack[break_stack_len++] = break_label;
+  push_break(break_label);
   continue_stack[continue_stack_len++] = continue_label;
 }
 
 static void
 pop_loop_labels(void)
 {
-  SCC_ASSERT(NULL, break_stack_len > 0, "pop from empty break stack");
   SCC_ASSERT(NULL, continue_stack_len > 0, "pop from empty break stack");
-  break_stack_len--;
+  pop_break();
   continue_stack_len--;
 }
 
@@ -52,14 +64,14 @@ continue_target(void)
   return continue_stack[continue_stack_len - 1];
 }
 
-static int
+int
 gen_label()
 {
   static int count = 0;
   return count++;
 }
 
-static char*
+char*
 gen_label_name(char* prefix, int count)
 {
   char* name;
@@ -183,6 +195,20 @@ stack_dup(void)
 {
   emit("  mov (%%rsp), %%rax\n\n");
   push("rax");
+}
+
+/**
+ * Evaluates the constant expression `n` and returns its value.
+ */
+static int consteval(node* n)
+{
+  if (n->kind != NODE_CONST) {
+    error_at(n->tok,
+             "not a constant expression as currently recognized by "
+             "this compiler");
+  }
+
+  return n->u.const_value;
 }
 
 void
@@ -563,6 +589,42 @@ codegen_stmt(node* base)
         break;
       case NODE_CONTINUE:
         emit("  jmp %s\n", continue_target());
+        break;
+      case NODE_SWITCH: {
+        codegen_expr(n->u.switch_.cond);
+        char* end = gen_label_name(".L.switch.end", gen_label());
+        push_break(end);
+        pop("rax");
+        switch_case* default_case = NULL;
+        // TODO(check) switch case evaluated constants are unique
+        for (switch_case* c = n->u.switch_.cases; c; c = c->next) {
+          SCC_ASSERT(
+            c->tok, c->label->kind == NODE_LABEL, "case label is not a label?");
+          if (!c->cond) {
+            if (default_case) {
+              error_at(default_case->tok, "multiple default cases in switch");
+            }
+            default_case = c;
+            continue;
+          }
+          int cond_val = consteval(c->cond);
+          emit("  cmp $%d, %%rax\n", cond_val);
+          emit("  je %s\n", c->label->u.label_name);
+        }
+
+        if (default_case) {
+          emit("  jmp %s\n", default_case->label->u.label_name);
+        } else {
+          emit("  jmp %s\n", end);
+        }
+
+        codegen_stmt(n->u.switch_.body);
+        pop_break();
+        emit("%s:\n", end);
+        break;
+      }
+      case NODE_LABEL:
+        emit("%s:\n", n->u.label_name);
         break;
       default:
         break;
