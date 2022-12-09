@@ -75,7 +75,7 @@ static void
 push(const char* reg)
 {
   depth++;
-  printf("  push %%%s\n", reg);
+  emit("  push %%%s\n", reg);
 }
 
 static void
@@ -85,7 +85,7 @@ pop(const char* reg)
     ice_at(NULL, "pop from empty value stack");
   }
   depth--;
-  printf("  pop %%%s\n", reg);
+  emit("  pop %%%s\n", reg);
 }
 
 static void
@@ -95,7 +95,7 @@ pop_void(void)
     ice_at(NULL, "pop from empty value stack");
   }
   depth--;
-  printf("  add $8, %%rsp\n");
+  emit("  add $8, %%rsp\n");
 }
 
 static void
@@ -126,15 +126,15 @@ load(type* ty)
 
   switch (ty->size) {
     case 1:
-      printf("  movzbl (%%rax), %%eax\n");
-      printf("  cltq\n");
+      emit("  movzbl (%%rax), %%eax\n");
+      emit("  cltq\n");
       break;
     case 4:
-      printf("  mov (%%rax), %%eax\n");
-      printf("  cltq\n");
+      emit("  mov (%%rax), %%eax\n");
+      emit("  cltq\n");
       break;
     case 8:
-      printf("  mov (%%rax), %%rax\n");
+      emit("  mov (%%rax), %%rax\n");
       break;
     default:
       ice_at(NULL, "unknown type size %d", ty->size);
@@ -155,17 +155,17 @@ store(type* ty)
   switch (ty->size) {
     case 1:
       pop("rax");
-      printf("  movb %%al, (%%rdi)\n");
+      emit("  movb %%al, (%%rdi)\n");
       break;
     case 4:
       pop("rax");
-      printf("  mov %%eax, (%%rdi)\n");
+      emit("  mov %%eax, (%%rdi)\n");
       break;
     default:
       // Values of size 8 and arrays (pointers or pointer-like integers)
       // use all of rax.
       pop("rax");
-      printf("  mov %%rax, (%%rdi)\n");
+      emit("  mov %%rax, (%%rdi)\n");
       break;
   }
 }
@@ -177,7 +177,7 @@ store(type* ty)
 static void
 stack_dup(void)
 {
-  printf("  mov (%%rsp), %%rax\n\n");
+  emit("  mov (%%rsp), %%rax\n\n");
   push("rax");
 }
 
@@ -198,11 +198,11 @@ codegen_lvalue_addr(node* n)
       }
 
       if (n->u.symbol_ref->kind == SYMBOL_GLOBAL_VAR) {
-        printf("  lea %s(%%rip), %%rax\n", n->u.symbol_ref->name);
+        emit("  lea %s(%%rip), %%rax\n", n->u.symbol_ref->name);
       } else {
-        printf("  lea %d(%%rbp), %%rax # symbol ref lvalue `%s`\n",
-               n->u.symbol_ref->u.frame_offset,
-               n->u.symbol_ref->name);
+        emit("  lea %d(%%rbp), %%rax # symbol ref lvalue `%s`\n",
+             n->u.symbol_ref->u.frame_offset,
+             n->u.symbol_ref->name);
       }
       push("rax");
       break;
@@ -231,7 +231,7 @@ void
 codegen_expr(node* n)
 {
   if (n->kind == NODE_CONST) {
-    printf("  mov $%d, %%rax\n", n->u.const_value);
+    emit("  mov $%d, %%rax\n", n->u.const_value);
     push("rax");
     return;
   }
@@ -243,25 +243,25 @@ codegen_expr(node* n)
     pop("rax"); // left
     switch (n->u.binop.op) {
       case BINOP_ADD:
-        printf("  add %%rdi, %%rax\n");
+        emit("  add %%rdi, %%rax\n");
         push("rax");
         break;
       case BINOP_SUB:
-        printf("  sub %%rdi, %%rax\n");
+        emit("  sub %%rdi, %%rax\n");
         push("rax");
         break;
       case BINOP_MUL:
-        printf("  imul %%rdi, %%rax\n");
+        emit("  imul %%rdi, %%rax\n");
         push("rax");
         break;
       case BINOP_DIV:
-        printf("  xor %%rdx, %%rdx\n");
-        printf("  idiv %%rdi\n");
+        emit("  xor %%rdx, %%rdx\n");
+        emit("  idiv %%rdi\n");
         push("rax");
         break;
       case BINOP_MOD:
-        printf("  xor %%rdx, %%rdx\n");
-        printf("  idiv %%rdi\n");
+        emit("  xor %%rdx, %%rdx\n");
+        emit("  idiv %%rdi\n");
         push("rdx");
         break;
       case BINOP_EQUAL:
@@ -270,21 +270,21 @@ codegen_expr(node* n)
       case BINOP_LT_EQUAL:
       case BINOP_GT:
       case BINOP_GT_EQUAL:
-        printf("  cmp %%rdi, %%rax\n");
+        emit("  cmp %%rdi, %%rax\n");
         if (n->u.binop.op == BINOP_EQUAL) {
-          printf("  sete %%al\n");
+          emit("  sete %%al\n");
         } else if (n->u.binop.op == BINOP_NOT_EQUAL) {
-          printf("  setne %%al\n");
+          emit("  setne %%al\n");
         } else if (n->u.binop.op == BINOP_LT) {
-          printf("  setl %%al\n");
+          emit("  setl %%al\n");
         } else if (n->u.binop.op == BINOP_LT_EQUAL) {
-          printf("  setle %%al\n");
+          emit("  setle %%al\n");
         } else if (n->u.binop.op == BINOP_GT) {
-          printf("  setg %%al\n");
+          emit("  setg %%al\n");
         } else if (n->u.binop.op == BINOP_GT_EQUAL) {
-          printf("  setge %%al\n");
+          emit("  setge %%al\n");
         }
-        printf("  movzb %%al, %%rax\n");
+        emit("  movzb %%al, %%rax\n");
         push("rax");
     }
   }
@@ -345,7 +345,7 @@ codegen_expr(node* n)
     // When calling variadic functions, the System V ABI requires that the
     // number of vector arguments be written into %al. We don't support that, so
     // we just write zero.
-    printf("  mov $0, %%al\n");
+    emit("  mov $0, %%al\n");
     // Furthermore, if we're calling C functions, C generally expects the stack
     // to be aligned to a 16-byte boundary. Since we are dynamically pushing and
     // popping things from the stack as part of our codegen strategy, we have no
@@ -357,13 +357,13 @@ codegen_expr(node* n)
     //
     // First, we save the current stack pointer, for when we return;
     push("rbp");
-    printf("  mov %%rsp, %%rbp\n");
+    emit("  mov %%rsp, %%rbp\n");
     // Then, we align our stack pointer downwards.
-    printf("  and $0xFFFFFFFFFFFFFFF0, %%rsp\n");
+    emit("  and $0xFFFFFFFFFFFFFFF0, %%rsp\n");
     // With a properly aligned stack, we can now call...
-    printf("  call %s\n", n->u.call.name);
+    emit("  call %s\n", n->u.call.name);
     // ...restore our potentially-unaligned stack pointer...
-    printf("  mov %%rbp, %%rsp\n");
+    emit("  mov %%rbp, %%rsp\n");
     pop("rbp");
     // ...and continue.
     push("rax");
@@ -374,14 +374,14 @@ codegen_expr(node* n)
     char* label = gen_label_name(".L.and", label_idx);
     codegen_expr(n->u.and_.left);
     pop("rax");
-    printf("  cmp $0, %%rax\n");
-    printf("  je %s\n", label);
+    emit("  cmp $0, %%rax\n");
+    emit("  je %s\n", label);
     codegen_expr(n->u.and_.right);
     pop("rax");
-    printf("  cmp $0, %%rax\n");
-    printf("  setne %%al\n");
-    printf("  movzb %%al, %%eax\n");
-    printf("%s:\n", label);
+    emit("  cmp $0, %%rax\n");
+    emit("  setne %%al\n");
+    emit("  movzb %%al, %%eax\n");
+    emit("%s:\n", label);
     push("rax");
   }
 
@@ -391,10 +391,10 @@ codegen_expr(node* n)
     // TODO: conv to a bool is special
     switch (n->ty->size) {
       case 1:
-        printf("  movsx %%al, %%eax\n");
+        emit("  movsx %%al, %%eax\n");
         break;
       case 4:
-        printf("  cltq\n");
+        emit("  cltq\n");
         break;
       default:
         break;
@@ -418,9 +418,9 @@ codegen_expr(node* n)
     load(n->ty);                                 //
     push("rax");                                 // [addr, value], rax = value
     if (n->kind == NODE_POSTINCREMENT) {
-      printf("  add $1, %%rax\n"); // [addr, value], rax = value + 1
+      emit("  add $1, %%rax\n"); // [addr, value], rax = value + 1
     } else {
-      printf("  sub $1, %%rax\n"); // [addr, value], rax = value + 1
+      emit("  sub $1, %%rax\n"); // [addr, value], rax = value + 1
     }
     pop("rdx");   // [addr], rax = value + 1, rdi = value
     pop("rsi");   // [], rax = value + 1, rdi = value, rsi = addr
@@ -439,8 +439,8 @@ codegen_stmt(node* base)
       case NODE_RETURN:
         codegen_expr(n->u.return_value);
         pop("rax");
-        printf("  leave\n");
-        printf("  ret\n");
+        emit("  leave\n");
+        emit("  ret\n");
         break;
       case NODE_EXPR_STMT:
         codegen_expr(n->u.expr_stmt_value);
@@ -455,15 +455,15 @@ codegen_stmt(node* base)
         int label_count = gen_label();
         codegen_expr(n->u.if_.cond);
         pop("rax");
-        printf("  cmp $0, %%rax\n");
-        printf("  je .L.else.%d\n", label_count);
+        emit("  cmp $0, %%rax\n");
+        emit("  je .L.else.%d\n", label_count);
         codegen_stmt(n->u.if_.then);
-        printf("  jmp .L.end.%d\n", label_count);
-        printf(".L.else.%d:\n", label_count);
+        emit("  jmp .L.end.%d\n", label_count);
+        emit(".L.else.%d:\n", label_count);
         if (n->u.if_.else_) {
           codegen_stmt(n->u.if_.else_);
         }
-        printf(".L.end.%d:\n", label_count);
+        emit(".L.end.%d:\n", label_count);
         break;
       }
       case NODE_FOR: {
@@ -474,45 +474,45 @@ codegen_stmt(node* base)
         if (n->u.for_.initializer) {
           codegen_stmt(n->u.for_.initializer);
         }
-        printf("%s:\n", header);
+        emit("%s:\n", header);
         if (n->u.for_.cond) {
           codegen_expr(n->u.for_.cond);
           pop("rax");
-          printf("  cmp $0, %%rax\n");
-          printf("  je %s\n", end);
+          emit("  cmp $0, %%rax\n");
+          emit("  je %s\n", end);
         }
         push_loop_labels(end, next);
         codegen_stmt(n->u.for_.body);
         pop_loop_labels();
-        printf("%s:\n", next);
+        emit("%s:\n", next);
         if (n->u.for_.next) {
           codegen_expr(n->u.for_.next);
           pop_void();
         }
-        printf("  jmp %s\n", header);
-        printf("%s:\n", end);
+        emit("  jmp %s\n", header);
+        emit("%s:\n", end);
         break;
       }
       case NODE_DO: {
         int label_count = gen_label();
         char* header = gen_label_name(".L.do.body", label_count);
         char* end = gen_label_name(".L.do.end", label_count);
-        printf("%s:\n", header);
+        emit("%s:\n", header);
         push_loop_labels(end, header);
         codegen_stmt(n->u.do_.body);
         pop_loop_labels();
         codegen_expr(n->u.do_.cond);
         pop("rax");
-        printf("  cmp $0, %%rax\n");
-        printf("  jne .L.do.body.%d\n", label_count);
-        printf("%s:\n", end);
+        emit("  cmp $0, %%rax\n");
+        emit("  jne .L.do.body.%d\n", label_count);
+        emit("%s:\n", end);
         break;
       }
       case NODE_BREAK:
-        printf("  jmp %s\n", break_target());
+        emit("  jmp %s\n", break_target());
         break;
       case NODE_CONTINUE:
-        printf("  jmp %s\n", continue_target());
+        emit("  jmp %s\n", continue_target());
         break;
       default:
         break;
@@ -546,16 +546,16 @@ codegen_function(symbol* sym)
   }
 
   int offset = calculate_frame_layout(sym);
-  printf(".text\n");
-  printf(".globl %s\n", sym->name);
-  printf(".type  %s, @function\n", sym->name);
-  printf("%s:\n", sym->name);
-  printf("  push %%rbp\n");
-  printf("  movq %%rsp, %%rbp\n");
-  printf("  sub $%d, %%rsp\n", offset);
+  emit(".text\n");
+  emit(".globl %s\n", sym->name);
+  emit(".type  %s, @function\n", sym->name);
+  emit("%s:\n", sym->name);
+  emit("  push %%rbp\n");
+  emit("  movq %%rsp, %%rbp\n");
+  emit("  sub $%d, %%rsp\n", offset);
   codegen_stmt(sym->u.function.body);
-  printf("  leave\n");
-  printf("  ret\n");
+  emit("  leave\n");
+  emit("  ret\n");
 }
 
 static void
@@ -571,19 +571,28 @@ codegen_global(symbol* sym)
 
   char* data = sym->u.global_data;
   if (!data) {
-    printf(".bss\n");
-    printf("%s:\n", sym->name);
-    printf("  .zero %d\n", sym->ty->size);
+    emit(".bss\n");
+    emit("%s:\n", sym->name);
+    emit("  .zero %d\n", sym->ty->size);
     return;
   }
 
-  printf(".section .rodata\n");
-  printf("%s:\n", sym->name);
+  emit(".section .rodata\n");
+  emit("%s:\n", sym->name);
   for (size_t i = 0; i < strlen(data); i++) {
-    printf("  .byte 0x%x\n", data[i]);
+    emit("  .byte 0x%x\n", data[i]);
   }
 
-  printf("  .byte 0x00\n");
+  emit("  .byte 0x00\n");
+}
+
+void
+emit(char* format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  vfprintf(output_file, format, args);
+  va_end(args);
 }
 
 void

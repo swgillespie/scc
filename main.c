@@ -1,5 +1,57 @@
 #include "scc.h"
 
+FILE* output_file;
+char* input_file;
+
+static void
+usage()
+{
+  printf("scc <input.c> [-o out]\n");
+  exit(1);
+}
+
+static void
+parse_options(int argc, char** argv)
+{
+  int i = 1;
+  if (argc < 2) {
+    usage();
+  }
+
+  while (i < argc) {
+    if (strcmp("-h", argv[i]) == 0 || strcmp("--help", argv[i]) == 0) {
+      usage();
+    }
+
+    if (strcmp("-o", argv[i]) == 0) {
+      if (output_file) {
+        printf("error: multiple output files declared\n");
+        exit(1);
+      }
+
+      i++;
+      if (i >= argc) {
+        printf("error: argument to -o required\n");
+        exit(1);
+      }
+      output_file = fopen(argv[i++], "w");
+      if (!output_file) {
+        perror("error: failed to open output file");
+        exit(1);
+      }
+
+      continue;
+    }
+
+    if (!input_file) {
+      input_file = argv[i++];
+    } else {
+      printf("error: multiple input files declared\n");
+      exit(1);
+    }
+  }
+}
+
 /**
  * SCC is not (yet) a full C compiler in that it does not provide a
  * preprocessor.
@@ -52,12 +104,17 @@ setup_preprocessor(char* filename)
 int
 main(int argc, char** argv)
 {
-  if (argc != 2) {
-    puts("usage: scc <input.c>");
-    return 1;
+  parse_options(argc, argv);
+  if (!input_file) {
+    printf("error: no input file\n");
+    exit(1);
   }
 
-  FILE* stream = setup_preprocessor(argv[1]);
+  if (!output_file) {
+    output_file = stdout;
+  }
+
+  FILE* stream = setup_preprocessor(input_file);
   load_file(argv[1], stream);
   token* tok = tokenize();
   symbol* sym = parse(&tok);

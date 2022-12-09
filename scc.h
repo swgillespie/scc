@@ -381,6 +381,12 @@ parse(token** cursor);
 void
 codegen(symbol* sym);
 
+/**
+ * Emits a string to the output assembly file.
+ */
+void
+emit(char* fmt, ...);
+
 /*
  * builtins.c - Management for builtin functions
  */
@@ -405,6 +411,11 @@ typedef struct builtin_function
 
 builtin_function*
 builtin_lookup(char* name);
+
+/**
+ * Options
+ */
+extern FILE* output_file;
 
 /**
  * Miscellaneous utility routines
