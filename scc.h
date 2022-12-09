@@ -35,6 +35,7 @@ typedef enum
   TOKEN_EXTERN,
   TOKEN_TYPEDEF,
   TOKEN_STRUCT,
+  TOKEN_UNION,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
@@ -101,6 +102,7 @@ typedef enum type_kind
   TYPE_FUNCTION,
   TYPE_ARRAY,
   TYPE_STRUCT,
+  TYPE_UNION,
 } type_kind;
 
 /**
@@ -196,6 +198,9 @@ make_field(token* name, type* ty, int offset);
 
 type*
 make_struct(token* name, field* fields, int size);
+
+type*
+make_union(token* name, field* fields, int size);
 
 char*
 type_name(type* ty);

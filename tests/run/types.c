@@ -14,6 +14,13 @@ struct membertest
   char z;
 };
 
+union foo_union
+{
+  int x;
+  int y;
+  int z;
+};
+
 void
 size_of()
 {
@@ -32,6 +39,7 @@ size_of()
               char z;
             }),
             8);
+  ASSERT_EQ(sizeof(union foo_union), 4);
 }
 
 void
@@ -67,6 +75,12 @@ members()
   int* pptr_x = &pptr->x;
   *pptr_x = 9;
   ASSERT_EQ(p.x, 9);
+
+  union foo_union u;
+  u.y = 0;
+  u.x = 1;
+  ASSERT_EQ(u.y, 1);
+  ASSERT_EQ(&u.x == &u.y, 1);
 }
 
 int

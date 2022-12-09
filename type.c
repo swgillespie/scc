@@ -74,6 +74,18 @@ make_struct(token* name, field* fields, int size)
   return t;
 }
 
+type*
+make_union(token* name, field* fields, int size)
+{
+  type* t = malloc(sizeof(type));
+  memset(t, 0, sizeof(type));
+  t->kind = TYPE_UNION;
+  t->size = size;
+  t->u.aggregate.name = name;
+  t->u.aggregate.fields = fields;
+  return t;
+}
+
 static void
 type_name_to_stream(type* ty, FILE* stream)
 {
@@ -121,13 +133,20 @@ type_name_to_stream(type* ty, FILE* stream)
               "struct %s",
               strndup(ty->u.aggregate.name->pos, ty->u.aggregate.name->len));
       return;
+    case TYPE_UNION:
+      fprintf(stream,
+              "union %s",
+              strndup(ty->u.aggregate.name->pos, ty->u.aggregate.name->len));
+      return;
   }
 }
 
 field*
 field_lookup(token* name, type* ty)
 {
-  SCC_ASSERT(name, ty->kind == TYPE_STRUCT, "field_lookup on non-struct type");
+  SCC_ASSERT(name,
+             ty->kind == TYPE_STRUCT || ty->kind == TYPE_UNION,
+             "field_lookup on non-aggregate type");
   for (field* f = ty->u.aggregate.fields; f; f = f->next) {
     if (name->len == f->name->len &&
         strncmp(name->pos, f->name->pos, name->len) == 0) {

@@ -22,6 +22,7 @@ typedef struct type_symbol
   // Whether this type is a `struct`, and must be prefixed with the `struct`
   // keyword
   int is_struct;
+  int is_union;
 } type_symbol;
 
 /**
@@ -70,6 +71,7 @@ typedef enum type_lookup_scope
 {
   TYPE_SCOPE_TYPEDEF,
   TYPE_SCOPE_STRUCT,
+  TYPE_SCOPE_UNION,
 } type_lookup_scope;
 
 static type_symbol*
@@ -77,11 +79,15 @@ scope_lookup_type(token* name, type_lookup_scope tls)
 {
   for (scope* s = current_scope; s; s = s->next) {
     for (type_symbol* sym = s->type_symbols; sym; sym = sym->next) {
-      if (tls == TYPE_SCOPE_TYPEDEF && sym->is_struct) {
+      if (tls == TYPE_SCOPE_STRUCT && !sym->is_struct) {
         continue;
       }
 
-      if (tls == TYPE_SCOPE_STRUCT && !sym->is_struct) {
+      if (tls == TYPE_SCOPE_UNION && !sym->is_union) {
+        continue;
+      }
+
+      if (tls == TYPE_SCOPE_TYPEDEF && (sym->is_struct || sym->is_union)) {
         continue;
       }
 
@@ -693,7 +699,7 @@ can_start_type_name(token** cursor)
 
   return peek(cursor, TOKEN_CHAR) || peek(cursor, TOKEN_INT) ||
          peek(cursor, TOKEN_BOOL) || peek(cursor, TOKEN_VOID) ||
-         peek(cursor, TOKEN_STRUCT);
+         peek(cursor, TOKEN_STRUCT) || peek(cursor, TOKEN_UNION);
 }
 
 /**
@@ -1274,9 +1280,10 @@ postfix_expr(token** cursor)
     }
 
     if (equal(cursor, TOKEN_DOT)) {
-      if (base->ty->kind != TYPE_STRUCT) {
-        error_at(base->tok,
-                 "left-hand-side of member expression is not a struct");
+      if (base->ty->kind != TYPE_STRUCT && base->ty->kind != TYPE_UNION) {
+        error_at(
+          base->tok,
+          "left-hand-side of member expression is not a struct or union");
       }
 
       token* field_name = eat(cursor, TOKEN_IDENT);
@@ -1461,10 +1468,16 @@ declarator(token** cursor, type** base)
  *  specifier-qualifier-list struct-declarator-list ";"
  */
 static type*
-struct_specifier(token** cursor)
+struct_or_union_specifier(token** cursor)
 {
   // 6.7.2.1 Structure and union specifiers
-  token* struct_tok = eat(cursor, TOKEN_STRUCT);
+  token* struct_or_union_tok;
+  if (peek(cursor, TOKEN_STRUCT)) {
+    struct_or_union_tok = eat(cursor, TOKEN_STRUCT);
+  } else {
+    struct_or_union_tok = eat(cursor, TOKEN_UNION);
+  }
+  int is_union = struct_or_union_tok->kind == TOKEN_UNION;
   token* name = NULL;
   if (peek(cursor, TOKEN_IDENT)) {
     name = eat(cursor, TOKEN_IDENT);
@@ -1473,7 +1486,10 @@ struct_specifier(token** cursor)
   if (equal(cursor, TOKEN_LBRACE)) {
     field head = { 0 };
     field* fields = &head;
+    // Stays at zero for unions, incremented for structs
     int offset = 0;
+    // Ignored for structs, used as the union's size for unions
+    int max_member_size = 0;
     while (!equal(cursor, TOKEN_RBRACE)) {
       // Struct offsets begin at zero and are allocated at 4-byte boundaries.
       type* declspec = declaration_specifiers(cursor, NULL);
@@ -1489,36 +1505,60 @@ struct_specifier(token** cursor)
         if (decl->len == f->name->len &&
             strncmp(decl->pos, f->name->pos, decl->len) == 0) {
           error_at(decl,
-                   "struct declares duplicate field `%s`",
+                   "struct or union declares duplicate field `%s`",
                    strndup(decl->pos, decl->len));
         }
       }
 
       int field_offset = offset;
-      offset = (offset + declspec->size + 3) & -4;
+      if (!is_union) {
+        offset = (offset + declspec->size + 3) & -4;
+      }
+      if (declspec->size > max_member_size) {
+        max_member_size = declspec->size;
+      }
       fields = fields->next = make_field(decl, declspec, field_offset);
     }
 
-    type* ty = make_struct(name, head.next, offset);
-    type_symbol* ty_sym = make_type_symbol(name, ty);
-    ty_sym->is_struct = 1;
+    type* ty;
+    type_symbol* ty_sym;
+    if (is_union) {
+      ty = make_union(name, head.next, (max_member_size + 3) & -4);
+      ty_sym = make_type_symbol(name, ty);
+      ty_sym->is_union = 1;
+    } else {
+      ty = make_struct(name, head.next, offset);
+      ty_sym = make_type_symbol(name, ty);
+      ty_sym->is_struct = 1;
+    }
+
     define_type(ty_sym);
     return ty;
   } else if (!name) {
     // 6.7.2.1.2 - Anonymous structs must have a definition
-    error_at(struct_tok,
-             "declaration of anonymous struct must be a definition");
+    error_at(struct_or_union_tok,
+             "declaration of anonymous struct or union must be a definition");
   } else {
     // This can be a forward declaration of a struct or a reference to a
     // previously-defined struct.
-    type_symbol* ty_sym = scope_lookup_type(name, TYPE_SCOPE_STRUCT);
+    type_lookup_scope lookup_scope =
+      is_union ? TYPE_SCOPE_UNION : TYPE_SCOPE_STRUCT;
+    type_symbol* ty_sym = scope_lookup_type(name, lookup_scope);
     if (ty_sym) {
       return ty_sym->ty;
     }
 
-    type* ty = make_struct(name, NULL, 0);
-    type_symbol* new_sym = make_type_symbol(name, ty);
-    new_sym->is_struct = 1;
+    type* ty;
+    type_symbol* new_sym;
+    if (is_union) {
+      ty = make_union(name, NULL, 0);
+      new_sym = make_type_symbol(name, ty);
+      new_sym->is_union = 1;
+    } else {
+      ty = make_struct(name, NULL, 0);
+      new_sym = make_type_symbol(name, ty);
+      new_sym->is_struct = 1;
+    }
     return ty;
   }
 }
@@ -1599,11 +1639,11 @@ declaration_specifiers(token** cursor, storage_class* storage)
       continue;
     }
 
-    if (peek(cursor, TOKEN_STRUCT)) {
+    if (peek(cursor, TOKEN_STRUCT) || peek(cursor, TOKEN_UNION)) {
       if (type_spec)
         error_at(*cursor, "two or more data types in declaration specifier");
 
-      type_spec = struct_specifier(cursor);
+      type_spec = struct_or_union_specifier(cursor);
     }
 
     if (peek(cursor, TOKEN_IDENT)) {
@@ -1710,7 +1750,7 @@ external_declaration(token** cursor)
     if (!decl) {
       // Anonymous (forward) declarations don't declare anything unless their
       // decls themselves declare something in the type namespace (e.g. structs)
-      if (declspec->kind != TYPE_STRUCT) {
+      if (declspec->kind != TYPE_STRUCT && declspec->kind != TYPE_UNION) {
         warn_at(start_tok, "declaration does not declare anything");
       }
 
