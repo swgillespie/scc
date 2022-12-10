@@ -15,6 +15,9 @@ TEST_EXES := $(basename $(TEST_SOURCES))
 scc: $(OBJECTS)
 	$(CC) $(OBJECTS) -o scc
 
+selfhost: CFLAGS = -D__SCC__=1 -Wpedantic
+selfhost: scc
+
 %.o: %.c scc.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 

@@ -1,6 +1,112 @@
 #ifndef __SCC_H__
 #define __SCC_H__
 
+#ifdef __SCC__
+#define SCC_SELFHOST 1
+#endif /* __SCC__ */
+
+#ifdef SCC_SELFHOST
+
+#define NULL 0
+
+typedef struct FILE FILE;
+
+extern FILE* stdout;
+
+typedef unsigned long size_t;
+
+int
+printf(const char* fmt, ...);
+
+int
+fprintf(FILE* stream, const char* fmt, ...);
+
+FILE*
+open_memstream(char** ptr, size_t* sizeloc);
+
+void
+exit(int code);
+
+int
+strcmp(const char* one, const char* two);
+
+FILE*
+fopen(const char* path, const char* mode);
+
+FILE*
+fdopen(int fd, const char* mode);
+
+int
+fclose(FILE* stream);
+
+int
+fflush(FILE* stream);
+
+size_t
+fread(void* ptr, size_t size, size_t n, FILE* stream);
+
+size_t
+fwrite(const void* ptr, size_t size, size_t n, FILE* stream);
+
+int
+fputc(int c, FILE* stream);
+
+int
+fputs(const char* s, FILE* stream);
+
+void
+perror(const char* s);
+
+int
+pipe(int pipefd[2]);
+
+int
+fork();
+
+int
+close(int fd);
+
+int
+dup2(int oldfd, int newfd);
+
+int
+execv(const char* pathname, char* const argv[]);
+
+void*
+malloc(size_t size);
+
+void*
+memset(void* s, int c, size_t n);
+
+void*
+memcpy(void* dest, const void* src, size_t n);
+
+size_t
+strlen(const char* s);
+
+int
+strncmp(const char* s1, const char* s2, size_t n);
+
+int
+snprintf(char* str, size_t size, const char* format, ...);
+
+char*
+strdup(const char* s);
+
+int
+isspace(int c);
+
+int
+isalnum(int c);
+
+int
+isdigit(int c);
+
+void
+abort();
+
+#else
+
 #define _GNU_SOURCE
 
 #include <ctype.h>
@@ -9,6 +115,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#endif /* SCC_SELFHOST */
 
 /**
  * tokenize.c - C source tokenizer
@@ -462,8 +570,15 @@ codegen(symbol* sym);
 /**
  * Emits a string to the output assembly file.
  */
+
+#ifndef SCC_SELFHOST
 void
 emit(char* fmt, ...);
+#else /* SCC_SELFHOST */
+
+#define emit(fmt, ...) fprintf(output_file, (fmt), ##__VA_ARGS__)
+
+#endif
 
 /*
  * builtins.c - Management for builtin functions

@@ -89,7 +89,9 @@ setup_preprocessor(char* filename)
     close(pipefd[0]);
     dup2(pipefd[1], 1 /* stdout */);
     close(pipefd[1]);
-    char* args[] = { "/usr/bin/clang", "-E", "-P", filename, NULL };
+    char* args[] = {
+      "/usr/bin/clang", "-E", "-P", "-D__SCC__=1", filename, NULL
+    };
     execv("/usr/bin/clang", args); // does not return
     exit(0);
   } else {

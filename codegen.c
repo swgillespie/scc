@@ -714,6 +714,7 @@ codegen_global(symbol* sym)
   emit("  .byte 0x00\n");
 }
 
+#ifndef SCC_SELFHOST
 void
 emit(char* format, ...)
 {
@@ -722,6 +723,7 @@ emit(char* format, ...)
   vfprintf(output_file, format, args);
   va_end(args);
 }
+#endif
 
 void
 codegen(symbol* symbols)

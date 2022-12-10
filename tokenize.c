@@ -407,6 +407,8 @@ tokenize(void)
   return head.next;
 }
 
+#ifndef SCC_SELFHOST
+
 void
 vdiagnostic_at(token* tok, const char* prefix, const char* fmt, va_list args)
 {
@@ -491,3 +493,27 @@ ice_at(token* tok, const char* fmt, ...)
   va_end(args);
   abort();
 }
+
+#else
+
+void
+error_at(token* tok, const char* fmt, ...)
+{
+  fprintf("error: %s\n", fmt);
+  exit(1);
+}
+
+void
+warn_at(token* tok, const char* fmt, ...)
+{
+  fprintf("warning: %s\n", fmt);
+}
+
+void
+ice_at(token* tok, const char* fmt, ...)
+{
+  fprintf("ice: %s\n", fmt);
+  abort();
+}
+
+#endif /* SCC_SELFHOST */
