@@ -7,6 +7,8 @@
 
 #ifdef SCC_SELFHOST
 
+#define NORETURN
+
 #define NULL 0
 
 typedef struct FILE FILE;
@@ -129,6 +131,8 @@ abort();
 #include <string.h>
 #include <unistd.h>
 
+#define NORETURN __attribute__((noreturn))
+
 #endif /* SCC_SELFHOST */
 
 /**
@@ -164,6 +168,7 @@ typedef enum
   TOKEN_UNSIGNED,
   TOKEN_LONG,
   TOKEN_CONST,
+  TOKEN_STATIC,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
@@ -605,6 +610,8 @@ emit(char* fmt, ...);
  * builtins.c - Management for builtin functions
  */
 
+#ifndef SCC_SELFHOST
+
 typedef struct builtin_function
 {
   /**
@@ -626,6 +633,8 @@ typedef struct builtin_function
 builtin_function*
 builtin_lookup(char* name);
 
+#endif /* !SCC_SELFHOST */
+
 /**
  * Options
  */
@@ -634,13 +643,13 @@ extern FILE* output_file;
 /**
  * Miscellaneous utility routines
  */
-__attribute__((noreturn)) void
+NORETURN void
 error_at(token* tok, const char* fmt, ...);
 
 void
 warn_at(token* tok, const char* fmt, ...);
 
-__attribute__((noreturn)) void
+NORETURN void
 ice_at(token* tok, const char* fmt, ...);
 
 int

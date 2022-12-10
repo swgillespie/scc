@@ -1382,6 +1382,21 @@ unary_expr(token** cursor)
       base->tok, BINOP_EQUAL, make_node_const(base->tok, ty_int, 0), base);
   }
 
+  if (equal(cursor, TOKEN_MINUS)) {
+    // Negation.
+    node* base = unary_expr(cursor);
+    if (!is_arithmetic_type(base->ty)) {
+      error_at(base->tok,
+               "arithmetic negation requires an arithmetic type (have `%s`)",
+               type_name(base->ty));
+    }
+
+    // TODO(efficiency) probably worth encoding this directly as a node for
+    // better codegen
+    return make_add_or_sub(
+      BINOP_SUB, base->tok, make_node_const(base->tok, ty_int, 0), base);
+  }
+
   return postfix_expr(cursor);
 }
 
@@ -1440,12 +1455,14 @@ postfix_expr(token** cursor)
         //
         // Compiler builtins have their own signature that can be checked here.
         name = strndup(base->tok->pos, base->tok->len);
+#ifndef SCC_SELFHOST
         builtin_function* builtin = builtin_lookup(name);
         if (!builtin) {
           warn_at(base->tok, "implicit declaration of function `%s`", name);
         } else {
           // TODO(check) parameter assignability checking
         }
+#endif /* !SCC_SELFHOST */
       } else {
         name = base->u.symbol_ref->name;
         if (base->u.symbol_ref->ty->kind != TYPE_FUNCTION) {
@@ -1944,6 +1961,11 @@ declaration_specifiers(token** cursor, storage_class* storage)
       continue;
     }
 
+    if (equal(cursor, TOKEN_STATIC)) {
+      // TODO(selfhost)
+      continue;
+    }
+
     if (equal(cursor, TOKEN_EXTERN)) {
       if (!storage) {
         error_at(*cursor, "storage class not permitted here");
@@ -2093,6 +2115,11 @@ external_declaration(token** cursor)
         warn_at(start_tok, "declaration does not declare anything");
       }
 
+      return;
+    }
+
+    if (storage == STORAGE_CLASS_TYPEDEF) {
+      // Typedefs don't define any actual symbols.
       return;
     }
 

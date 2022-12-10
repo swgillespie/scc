@@ -363,6 +363,7 @@ codegen_expr(node* n)
   }
 
   if (n->kind == NODE_CALL) {
+#ifndef SCC_SELFHOST
     builtin_function* builtin = builtin_lookup(n->u.call.name);
     if (builtin) {
       // Builtin functions are models as calls but result in unique codegen
@@ -371,6 +372,7 @@ codegen_expr(node* n)
       push("rax");
       return;
     }
+#endif /* SCC_SELFHOST */
 
     int num_args = 0;
     for (node* arg = n->u.call.args; arg; arg = arg->next) {
@@ -700,6 +702,7 @@ codegen_global(symbol* sym)
   char* data = sym->u.global_data;
   if (!data) {
     emit(".bss\n");
+    emit(".globl %s\n", sym->name);
     emit("%s:\n", sym->name);
     emit("  .zero %d\n", sym->ty->size);
     return;

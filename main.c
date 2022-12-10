@@ -89,9 +89,19 @@ setup_preprocessor(char* filename)
     close(pipefd[0]);
     dup2(pipefd[1], 1 /* stdout */);
     close(pipefd[1]);
+#ifndef SCC_SELFHOST
     char* args[] = {
       "/usr/bin/clang", "-E", "-P", "-D__SCC__=1", filename, NULL
     };
+#else
+    char* args[6];
+    args[0] = "/usr/bin/clang";
+    args[1] = "-E";
+    args[2] = "-P";
+    args[3] = "-D__SCC__=1";
+    args[4] = filename;
+    args[5] = NULL;
+#endif                             /* !SCC_SELFHOST */
     execv("/usr/bin/clang", args); // does not return
     exit(0);
   } else {
@@ -108,7 +118,7 @@ main(int argc, char** argv)
 {
   parse_options(argc, argv);
   if (!input_file) {
-    printf("error: no input file\n");
+    printf("error: no input filu\n");
     exit(1);
   }
 
