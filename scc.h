@@ -57,8 +57,15 @@ fputs(const char* s, FILE* stream);
 void
 perror(const char* s);
 
+/*
+TODO(selfhost) true definition:
 int
 pipe(int pipefd[2]);
+
+*/
+
+int
+pipe(int* pipefd);
 
 int
 fork();
@@ -69,8 +76,14 @@ close(int fd);
 int
 dup2(int oldfd, int newfd);
 
+/*
+TODO(selfhost) true definition:
 int
 execv(const char* pathname, char* const argv[]);
+*/
+
+int
+execv(const char* pathname, char** argv);
 
 void*
 malloc(size_t size);
@@ -148,6 +161,9 @@ typedef enum
   TOKEN_CASE,
   TOKEN_DEFAULT,
   TOKEN_ENUM,
+  TOKEN_UNSIGNED,
+  TOKEN_LONG,
+  TOKEN_CONST,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
@@ -288,6 +304,7 @@ typedef struct type
 } type;
 
 extern type* ty_int;
+extern type* ty_long;
 extern type* ty_void;
 extern type* ty_char;
 extern type* ty_bool;

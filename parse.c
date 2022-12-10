@@ -100,6 +100,11 @@ scope_lookup_type(token* name, type_lookup_scope tls)
         continue;
       }
 
+      // This symbol can't be referenced by name.
+      if (!sym->name) {
+        continue;
+      }
+
       if (strncmp(name->pos, sym->name, name->len) == 0 &&
           name->len == strlen(sym->name)) {
         return sym;
@@ -1649,6 +1654,12 @@ declarator(token** cursor, type** base)
     *base = make_pointer_type(*base);
   }
 
+  // Abstract declarators can be omitted, which (in the grammar) allows for
+  // declspecs without decls.
+  if (!peek(cursor, TOKEN_IDENT)) {
+    return NULL;
+  }
+
   token* ident = eat(cursor, TOKEN_IDENT);
   for (;;) {
     if (equal(cursor, TOKEN_LPAREN)) {
@@ -1909,10 +1920,27 @@ declaration_specifiers(token** cursor, storage_class* storage)
       continue;
     }
 
+    if (equal(cursor, TOKEN_LONG)) {
+      if (type_spec)
+        error_at(*cursor, "two or more data types in declaration specifier");
+      type_spec = ty_long;
+      continue;
+    }
+
     if (equal(cursor, TOKEN_VOID)) {
       if (type_spec)
         error_at(*cursor, "two or more data types in declaration specifier");
       type_spec = ty_void;
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_UNSIGNED)) {
+      // TODO(selfhost)
+      continue;
+    }
+
+    if (equal(cursor, TOKEN_CONST)) {
+      // TODO(selfhost)
       continue;
     }
 

@@ -22,7 +22,8 @@ static keyword keywords[] = {
   { "typedef", TOKEN_TYPEDEF, 7 }, { "struct", TOKEN_STRUCT, 6 },
   { "union", TOKEN_UNION, 5 },     { "switch", TOKEN_SWITCH, 6 },
   { "case", TOKEN_CASE, 4 },       { "default", TOKEN_DEFAULT, 7 },
-  { "enum", TOKEN_ENUM, 4 },
+  { "enum", TOKEN_ENUM, 4 },       { "unsigned", TOKEN_UNSIGNED, 8 },
+  { "long", TOKEN_LONG, 4 },       { "const", TOKEN_CONST, 5 }
 };
 
 void
