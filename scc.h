@@ -39,6 +39,7 @@ typedef enum
   TOKEN_SWITCH,
   TOKEN_CASE,
   TOKEN_DEFAULT,
+  TOKEN_ENUM,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
@@ -109,6 +110,7 @@ typedef enum type_kind
   TYPE_ARRAY,
   TYPE_STRUCT,
   TYPE_UNION,
+  TYPE_ENUM,
 } type_kind;
 
 /**
@@ -172,6 +174,7 @@ typedef struct type
       token* name;
       field* fields;
     } aggregate;
+    token* enum_name;
   } u;
 } type;
 
@@ -207,6 +210,9 @@ make_struct(token* name, field* fields, int size);
 
 type*
 make_union(token* name, field* fields, int size);
+
+type*
+make_enum(token* name);
 
 char*
 type_name(type* ty);
@@ -395,10 +401,13 @@ typedef enum symbol_kind
   SYMBOL_LOCAL_VAR,
   SYMBOL_GLOBAL_VAR,
   SYMBOL_FUNCTION,
+  SYMBOL_CONSTANT,
 } symbol_kind;
 
 /**
- * A symbol, representing an object that has a location in memory.
+ * A symbol, representing an object that is referenceable by name. It may or may
+ * not have a location in memory, depending on its linkage and whether or not
+ * it's a constant.
  */
 typedef struct symbol
 {
@@ -433,6 +442,10 @@ typedef struct symbol
      * For SYMBOL_GLOBAL_VAR, the data of the global.
      */
     char* global_data;
+    /*
+     * For SYMBOL_CONSTANT, the value of this constant.
+     */
+    int constant_value;
   } u;
 } symbol;
 

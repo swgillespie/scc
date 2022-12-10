@@ -737,6 +737,7 @@ codegen(symbol* symbols)
       case SYMBOL_LOCAL_VAR:
         ice_at(sym->tok, "local variable in global symbols list?");
         break;
+      case SYMBOL_CONSTANT:
       case SYMBOL_EMPTY:
         break;
     }

@@ -86,6 +86,17 @@ make_union(token* name, field* fields, int size)
   return t;
 }
 
+type*
+make_enum(token* name)
+{
+  type* t = malloc(sizeof(type));
+  memset(t, 0, sizeof(type));
+  t->kind = TYPE_ENUM;
+  t->size = ty_int->size;
+  t->u.enum_name = name;
+  return t;
+}
+
 static void
 type_name_to_stream(type* ty, FILE* stream)
 {
@@ -137,6 +148,10 @@ type_name_to_stream(type* ty, FILE* stream)
       fprintf(stream,
               "union %s",
               strndup(ty->u.aggregate.name->pos, ty->u.aggregate.name->len));
+      return;
+    case TYPE_ENUM:
+      fprintf(
+        stream, "enum %s", strndup(ty->u.enum_name->pos, ty->u.enum_name->len));
       return;
   }
 }

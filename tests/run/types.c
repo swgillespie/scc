@@ -83,12 +83,30 @@ members()
   ASSERT_EQ(&u.x == &u.y, 1);
 }
 
+enum inc
+{
+  INC_A,
+  INC_B,
+  INC_C = 8,
+  INC_D
+};
+
+void
+enums()
+{
+  ASSERT_EQ(INC_A, 0);
+  ASSERT_EQ(INC_B, 1);
+  ASSERT_EQ(INC_C, 8);
+  ASSERT_EQ(INC_D, 9);
+}
+
 int
 main()
 {
 
   members();
   size_of();
+  enums();
   puts("types ok");
   return 0;
 }

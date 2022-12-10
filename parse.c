@@ -25,6 +25,7 @@ typedef struct type_symbol
   // keyword
   int is_struct;
   int is_union;
+  int is_enum;
 } type_symbol;
 
 /**
@@ -74,6 +75,7 @@ typedef enum type_lookup_scope
   TYPE_SCOPE_TYPEDEF,
   TYPE_SCOPE_STRUCT,
   TYPE_SCOPE_UNION,
+  TYPE_SCOPE_ENUM,
 } type_lookup_scope;
 
 static type_symbol*
@@ -89,7 +91,12 @@ scope_lookup_type(token* name, type_lookup_scope tls)
         continue;
       }
 
-      if (tls == TYPE_SCOPE_TYPEDEF && (sym->is_struct || sym->is_union)) {
+      if (tls == TYPE_SCOPE_ENUM && !sym->is_enum) {
+        continue;
+      }
+
+      if (tls == TYPE_SCOPE_TYPEDEF &&
+          (sym->is_struct || sym->is_union || sym->is_enum)) {
         continue;
       }
 
@@ -210,6 +217,20 @@ make_symbol_global(token* tok, type* ty, char* name)
   s->name = name;
   s->kind = SYMBOL_GLOBAL_VAR;
   s->ty = ty;
+  return s;
+}
+
+static symbol*
+make_symbol_constant(token* tok, type* ty, token* name, int value)
+{
+  symbol* s = malloc(sizeof(symbol));
+  memset(s, 0, sizeof(symbol));
+  s->tok = tok;
+  s->linkage = LINKAGE_NONE;
+  s->name = strndup(name->pos, name->len);
+  s->kind = SYMBOL_CONSTANT;
+  s->ty = ty;
+  s->u.constant_value = value;
   return s;
 }
 
@@ -1511,6 +1532,10 @@ primary(token** cursor)
       for (symbol* sym = s->symbols; sym; sym = sym->next_in_scope) {
         if (strncmp(name->pos, sym->name, name->len) == 0 &&
             name->len == strlen(sym->name)) {
+          if (sym->kind == SYMBOL_CONSTANT) {
+            return make_node_const(name, ty_int, sym->u.constant_value);
+          }
+
           return make_symbol_ref(name, sym);
         }
       }
@@ -1730,6 +1755,97 @@ struct_or_union_specifier(token** cursor)
       new_sym = make_type_symbol(name, ty);
       new_sym->is_struct = 1;
     }
+
+    define_type(new_sym);
+    return ty;
+  }
+}
+
+/**
+ * enum-specifier ::=
+ *	"enum" identifier? "{" enumerator-list "}"
+ *	"enum" identifier? "{" enumerator-list "," "}"
+ *	"enum" identifier
+ *
+ * enumerator-list ::=
+ *	enumerator
+ *	enumerator-list "," enumerator
+ *
+ * enumerator ::=
+ *	enumeration-constant
+ *	enumeration-constant "=" constant-expression
+ */
+static type*
+enum_specifier(token** cursor)
+{
+  token* enum_tok = eat(cursor, TOKEN_ENUM);
+  token* name = NULL;
+  if (peek(cursor, TOKEN_IDENT)) {
+    name = eat(cursor, TOKEN_IDENT);
+  }
+
+  if (equal(cursor, TOKEN_LBRACE)) {
+    int iota = 0;
+    while (!equal(cursor, TOKEN_RBRACE)) {
+      token* enumerator = eat(cursor, TOKEN_IDENT);
+      token* value = NULL;
+      if (equal(cursor, TOKEN_EQUAL)) {
+        // Enumerator constants can be any constant expression; for now, we only
+        // allow integer literals.
+        value = eat(cursor, TOKEN_INTEGER);
+      }
+
+      if (!peek(cursor, TOKEN_RBRACE)) {
+        eat(cursor, TOKEN_COMMA);
+      }
+      if (value) {
+        // Enumeration constants are assigned one at a time, starting at 0 and
+        // incrementing upwards. Explicitly setting a value jumps ahead the
+        // incrementing counter.
+        //
+        // Note that this does get you into weird situations such as:
+        // ```
+        // enum foo {
+        //   a = 5,
+        //   b = 4,
+        //   c
+        // }
+        // ```
+        // where both c and a have the value 5, but that's just C for you; clang
+        // and gcc roll with this with no warnings.
+        iota = value->value;
+      }
+
+      int enumerator_value = iota++;
+      symbol* sym =
+        make_symbol_constant(enumerator, ty_int, enumerator, enumerator_value);
+      define(sym);
+    }
+
+    if (iota == 0) {
+      error_at(enum_tok, "empty enums are invalid");
+    }
+
+    type* ty = make_enum(name);
+    if (name) {
+      type_symbol* sym = make_type_symbol(name, ty);
+      sym->is_enum = 1;
+      define_type(sym);
+    }
+
+    return ty;
+  } else if (!name) {
+    error_at(enum_tok, "declaration of anonymous enum must be a definition");
+  } else {
+    type_symbol* ty_sym = scope_lookup_type(name, TYPE_SCOPE_ENUM);
+    if (ty_sym) {
+      return ty_sym->ty;
+    }
+
+    type* ty = make_enum(name);
+    type_symbol* new_sym = make_type_symbol(name, ty);
+    new_sym->is_enum = 1;
+    define_type(new_sym);
     return ty;
   }
 }
@@ -1815,6 +1931,13 @@ declaration_specifiers(token** cursor, storage_class* storage)
         error_at(*cursor, "two or more data types in declaration specifier");
 
       type_spec = struct_or_union_specifier(cursor);
+    }
+
+    if (peek(cursor, TOKEN_ENUM)) {
+      if (type_spec)
+        error_at(*cursor, "two or more data types in declaration specifier");
+
+      type_spec = enum_specifier(cursor);
     }
 
     if (peek(cursor, TOKEN_IDENT)) {
@@ -1921,7 +2044,8 @@ external_declaration(token** cursor)
     if (!decl) {
       // Anonymous (forward) declarations don't declare anything unless their
       // decls themselves declare something in the type namespace (e.g. structs)
-      if (declspec->kind != TYPE_STRUCT && declspec->kind != TYPE_UNION) {
+      if (declspec->kind != TYPE_STRUCT && declspec->kind != TYPE_UNION &&
+          declspec->kind != TYPE_ENUM) {
         warn_at(start_tok, "declaration does not declare anything");
       }
 
