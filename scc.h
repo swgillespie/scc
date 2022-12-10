@@ -184,6 +184,7 @@ typedef enum
   TOKEN_DOT,
   TOKEN_ARROW,
   TOKEN_ELLIPSIS,
+  TOKEN_EXCLEM,
   TOKEN_EOF,
 } token_kind;
 
@@ -341,6 +342,9 @@ integer_conversion_rank_compare(type* left, type* right);
 
 int
 is_arithmetic_type(type* ty);
+
+int
+is_scalar_type(type* ty);
 
 /**
  * parse.c - Parsing C source into node trees

@@ -1361,6 +1361,22 @@ unary_expr(token** cursor)
     return make_node_const(unop_tok, ty_int, sizeof_arg->ty->size);
   }
 
+  if (equal(cursor, TOKEN_EXCLEM)) {
+    // Logical not.
+    node* base = unary_expr(cursor);
+    if (!is_scalar_type(base->ty)) {
+      error_at(base->tok,
+               "logical not requires a scalar type (have `%s`)",
+               type_name(base->ty));
+    }
+
+    // 6.5.3.3.5 Unary arithmetic operators
+    //
+    // The expression !E is equivalent to (0==E).
+    return make_node_binary(
+      base->tok, BINOP_EQUAL, make_node_const(base->tok, ty_int, 0), base);
+  }
+
   return postfix_expr(cursor);
 }
 

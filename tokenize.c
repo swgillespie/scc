@@ -181,7 +181,7 @@ tokenize(void)
           cursor->next = make_token(TOKEN_NOT_EQ, c - 1, 2);
           c++;
         } else {
-          error_at(cursor, "expected `=`");
+          cursor->next = make_token(TOKEN_EXCLEM, c, 1);
         }
 
         break;

@@ -221,3 +221,9 @@ is_arithmetic_type(type* left)
       return 0;
   }
 }
+
+int
+is_scalar_type(type* ty)
+{
+  return is_arithmetic_type(ty) || ty->base;
+}
