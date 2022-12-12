@@ -1,4 +1,4 @@
-CC ?= clang
+CC := gcc
 CFLAGS := --std=gnu11 -Wpedantic -Wall -Wextra -g
 
 SOURCES := main.c codegen.c parse.c tokenize.c type.c builtins.c
