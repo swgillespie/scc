@@ -348,7 +348,7 @@ codegen_expr(node* n)
   if (n->kind == NODE_ASSIGN) {
     codegen_expr(n->u.assign.rvalue);
     codegen_lvalue_addr(n->u.assign.lvalue);
-    store(n->ty);
+    store(n->u.assign.lvalue->ty);
     push("rax");
   }
 
