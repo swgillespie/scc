@@ -52,7 +52,7 @@ static builtin_function builtins[] = { { .name = "__builtin_debugtrap",
 builtin_function*
 builtin_lookup(char* name)
 {
-  if (strncmp("__builtin_", name, sizeof("__builtin_")) != 0) {
+  if (strncmp("__builtin_", name, sizeof("__builtin_") - 1) != 0) {
     // early out - anything with out the __builtin_ prefix is not a builtin.
     return NULL;
   }
