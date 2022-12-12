@@ -501,20 +501,20 @@ ice_at(token* tok, const char* fmt, ...)
 void
 error_at(token* tok, const char* fmt, ...)
 {
-  fprintf("error: %s\n", fmt);
+  fprintf(stderr, "error: %s\n", fmt);
   exit(1);
 }
 
 void
 warn_at(token* tok, const char* fmt, ...)
 {
-  fprintf("warning: %s\n", fmt);
+  fprintf(stderr, "warning: %s\n", fmt);
 }
 
 void
 ice_at(token* tok, const char* fmt, ...)
 {
-  fprintf("ice: %s\n", fmt);
+  fprintf(stderr, "ice: %s\n", fmt);
   abort();
 }
 

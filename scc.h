@@ -14,6 +14,7 @@
 typedef struct FILE FILE;
 
 extern FILE* stdout;
+extern FILE* stderr;
 
 typedef unsigned long size_t;
 
@@ -31,6 +32,9 @@ exit(int code);
 
 int
 strcmp(const char* one, const char* two);
+
+char*
+strndup(const char* s, size_t n);
 
 FILE*
 fopen(const char* path, const char* mode);
@@ -113,6 +117,9 @@ isspace(int c);
 
 int
 isalnum(int c);
+
+int
+isalpha(int c);
 
 int
 isdigit(int c);

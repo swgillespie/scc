@@ -1,5 +1,7 @@
 #include "scc.h"
 
+#ifndef SCC_SELFHOST
+
 /**
  * __builtin_debugtrap() - raise a SIGTRAP, which will break a debugger.
  *
@@ -63,3 +65,5 @@ builtin_lookup(char* name)
 
   return NULL;
 }
+
+#endif /* SCC_SELFHOST */
