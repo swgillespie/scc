@@ -884,6 +884,9 @@ switch_stmt(token**);
 static node*
 conditional_expr(token**);
 
+static node*
+external_declaration(token**, int);
+
 /**
  * 6.7.7 - Type names
  *
@@ -923,7 +926,8 @@ can_start_type_name(token** cursor)
 
   return peek(cursor, TOKEN_CHAR) || peek(cursor, TOKEN_INT) ||
          peek(cursor, TOKEN_BOOL) || peek(cursor, TOKEN_VOID) ||
-         peek(cursor, TOKEN_STRUCT) || peek(cursor, TOKEN_UNION);
+         peek(cursor, TOKEN_STRUCT) || peek(cursor, TOKEN_UNION) ||
+         peek(cursor, TOKEN_EXTERN) || peek(cursor, TOKEN_TYPEDEF);
 }
 
 /**
@@ -1047,51 +1051,14 @@ expr_stmt(token** cursor)
 }
 
 /**
- *  declaration
- *    : declaration_specifiers declarator ("=" initializer) ";"
- *
- *  declaration_specifiers
- *    : int
- *
- *  direct_declarator
- *    : IDENTIFIER ( "[" assignment_expr? "]")*
+ * The declaration production is tangled in with the external_declaration
+ * production. This production is for decls that have block scope, which do not
+ * permit things like function definitions.
  */
 static node*
 declaration(token** cursor)
 {
-  type* decltype = decl_type_name(cursor);
-  token* ident = eat(cursor, TOKEN_IDENT);
-  while (equal(cursor, TOKEN_LBRACKET)) {
-    // C is ridiculously permissive with what it accepts as an array length
-    // initializer. We'll start with known constants.
-    node* array_length = assignment_expr(cursor);
-    if (array_length->kind != NODE_CONST) {
-      error_at(array_length->tok,
-               "non-literal nonsense not supported in arrays yet");
-    }
-
-    decltype = make_array_type(decltype, array_length->u.const_value);
-    eat(cursor, TOKEN_RBRACKET);
-  }
-
-  token* eq_tok = *cursor;
-  if (equal(cursor, TOKEN_EQUAL)) {
-    node* initializer = expr(cursor);
-    token* semi_tok = eat(cursor, TOKEN_SEMICOLON);
-    symbol* s = make_symbol_local(ident, decltype);
-    define(s);
-    return make_expr_stmt(
-      semi_tok,
-      make_node_assign(eq_tok, make_symbol_ref(ident, s), initializer));
-  }
-
-  /**
-   * Declarations are not really statements; without an initializer, they don't
-   * result in any codegen.
-   */
-  eat(cursor, TOKEN_SEMICOLON);
-  define(make_symbol_local(ident, decltype));
-  return make_nop();
+  return external_declaration(cursor, 1);
 }
 
 /**
@@ -1106,7 +1073,10 @@ compound_stmt(token** cursor)
   node* stmts = &head;
   push_scope();
   while (!peek(cursor, TOKEN_RBRACE)) {
-    stmts = stmts->next = stmt(cursor);
+    node* s = stmt(cursor);
+    for (node* c = s; c; c = c->next) {
+      stmts = stmts->next = c;
+    }
   }
   pop_scope();
 
@@ -2198,22 +2168,68 @@ declaration_specifiers(token** cursor, storage_class* storage)
  * For now, we only support a single decl in the init-declarator-list, for
  * simplicity.
  */
-static void
-external_declaration(token** cursor)
+static node*
+external_declaration(token** cursor, int in_compound_statement)
 {
+  // Step 1 - Parsing the decl into something we can make sense of.
   token* start_tok = *cursor;
   storage_class storage = STORAGE_CLASS_NONE;
   type* declspec = declaration_specifiers(cursor, &storage);
   token* decl = NULL;
+  // Only used in block scope (in_compount_statement)
+  node initializer_head = { 0 };
+  node* initializers = &initializer_head;
+  initializers = initializers->next = make_nop();
   if (!peek(cursor, TOKEN_SEMICOLON)) {
     decl = declarator(cursor, &declspec);
+  }
+
+  // Step 2 - Figuring out what kind of symbol we're going to define for this
+  // decl.
+  symbol* sym = NULL;
+  if (decl) {
+    if (declspec->kind == TYPE_FUNCTION) {
+      sym = make_symbol_function(decl, declspec);
+    } else if (in_compound_statement) {
+      // A "extern" storage class declares a global with external linkage, even
+      // in a compound statement.
+      if (storage == STORAGE_CLASS_EXTERN) {
+        sym = make_symbol_global(decl, declspec, strndup(decl->pos, decl->len));
+      } else if (storage != STORAGE_CLASS_TYPEDEF) {
+        sym = make_symbol_local(decl, declspec);
+      }
+    } else {
+      sym = make_symbol_global(decl, declspec, strndup(decl->pos, decl->len));
+    }
+  }
+
+  if (storage == STORAGE_CLASS_EXTERN) {
+    sym->linkage = LINKAGE_EXTERNAL;
   }
 
   if (equal(cursor, TOKEN_EQUAL)) {
     if (storage == STORAGE_CLASS_TYPEDEF) {
       error_at(decl, "illegal initializer for typedef");
     }
-    error_at(*cursor, "nyi: global decl initializers");
+
+    if (in_compound_statement) {
+      // A decl in a compound statement with an initializer is evaluated at the
+      // point of the decl and assigned to the decl symbol.
+      if (sym->linkage != LINKAGE_NONE) {
+        error_at(decl,
+                 "declaration of block scope identifier with linkage can't "
+                 "have an initializer");
+      }
+
+      node* initializer = assignment_expr(cursor);
+      node* init_stmt = make_expr_stmt(
+        decl, make_node_assign(decl, make_symbol_ref(decl, sym), initializer));
+      initializers = initializers->next = init_stmt;
+    } else {
+      // Global decls can only be initialized by constants, which will be
+      // handled by the code generator.
+      error_at(*cursor, "nyi: global decl initializers");
+    }
   }
 
   if (storage == STORAGE_CLASS_TYPEDEF) {
@@ -2222,13 +2238,17 @@ external_declaration(token** cursor)
   }
 
   if (peek(cursor, TOKEN_LBRACE)) {
+    if (in_compound_statement) {
+      error_at(decl, "function definition not allowed here");
+    }
+
     // This is a function definition.
     if (storage == STORAGE_CLASS_TYPEDEF) {
       error_at(decl, "function definition declared `typedef`");
     }
 
-    current_function = make_symbol_function(decl, declspec);
-    define(current_function);
+    current_function = sym;
+    define(sym);
     current_function->linkage = LINKAGE_INTERNAL;
 
     // Declare locals for every parameter of this function and initialize
@@ -2252,6 +2272,7 @@ external_declaration(token** cursor)
     current_function->u.function.body = parameter_inits.next;
     current_function->next = symbols;
     symbols = current_function;
+    return initializer_head.next;
   } else if (equal(cursor, TOKEN_SEMICOLON)) {
     // just a decl.
     if (!decl) {
@@ -2262,29 +2283,23 @@ external_declaration(token** cursor)
         warn_at(start_tok, "declaration does not declare anything");
       }
 
-      return;
+      return NULL;
     }
 
     if (storage == STORAGE_CLASS_TYPEDEF) {
       // Typedefs don't define any actual symbols.
-      return;
-    }
-
-    symbol* sym;
-    if (declspec->kind == TYPE_FUNCTION) {
-      sym = make_symbol_function(decl, declspec);
-    } else {
-      sym = make_symbol_global(decl, declspec, strndup(decl->pos, decl->len));
-    }
-
-    if (storage == STORAGE_CLASS_EXTERN) {
-      sym->linkage = LINKAGE_EXTERNAL;
+      return NULL;
     }
 
     define(sym);
-    sym->next = symbols;
-    symbols = sym;
+    if (sym->kind != SYMBOL_LOCAL_VAR) {
+      sym->next = symbols;
+      symbols = sym;
+    }
+    return initializer_head.next;
   }
+
+  return NULL;
 }
 
 symbol*
@@ -2294,7 +2309,7 @@ parse(token** cursor)
   memset(global_scope, 0, sizeof(scope));
   current_scope = global_scope;
   while (!equal(cursor, TOKEN_EOF)) {
-    external_declaration(cursor);
+    external_declaration(cursor, 0);
   }
 
   return symbols;
