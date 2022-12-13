@@ -1829,6 +1829,13 @@ declarator(token** cursor, type** base)
       continue;
     }
 
+    if (equal(cursor, TOKEN_LBRACKET)) {
+      token* array_len = eat(cursor, TOKEN_INTEGER);
+      eat(cursor, TOKEN_RBRACKET);
+      *base = make_array_type(*base, array_len->value);
+      continue;
+    }
+
     break;
   }
 
