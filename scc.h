@@ -213,6 +213,7 @@ typedef enum
   TOKEN_ARROW,
   TOKEN_ELLIPSIS,
   TOKEN_EXCLEM,
+  TOKEN_QUESTION,
   TOKEN_EOF,
 } token_kind;
 
@@ -407,6 +408,7 @@ typedef enum node_kind
   NODE_POSTDECREMENT,
   NODE_MEMBER,
   NODE_MEMBER_DEREF,
+  NODE_COND,
   NODE_SWITCH,
   NODE_LABEL,
   /* Control flow */
@@ -518,6 +520,12 @@ typedef struct node
       struct node* body;
       switch_case* cases;
     } switch_;
+    struct
+    {
+      struct node* cond;
+      struct node* true_expr;
+      struct node* false_expr;
+    } cond;
     char* label_name;
   } u;
 } node;

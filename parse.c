@@ -692,6 +692,73 @@ make_label(token* tok, char* name)
   return n;
 }
 
+static int
+is_valid_cond(node* tru, node* fls)
+{
+  // 6.5.15 Conditional operator
+  //
+  // The ternary conditional operator has a bunch of constraints on the second
+  // and third operands, which are enforced here.
+  //
+  // One of the following must hold:
+  // 1. Both operands have arithmetic type.
+  if (is_arithmetic_type(tru->ty) && is_arithmetic_type(fls->ty)) {
+    return 1;
+  }
+
+  // 2. Both operands have the same structure or union type
+  if (tru->ty->kind == TYPE_STRUCT && fls->ty->kind == TYPE_STRUCT &&
+      tru == fls) {
+    return 1;
+  }
+
+  if (tru->ty->kind == TYPE_UNION && fls->ty->kind == TYPE_UNION &&
+      tru == fls) {
+    return 1;
+  }
+
+  // 3. Both operands have void type.
+  // (weird, but ok.)
+  if (tru->ty == ty_void && fls->ty == ty_void) {
+    return 1;
+  }
+
+  // TODO
+  // 4. Both operands are pointers to qualified or unqualified versions of
+  // compatible types;
+  // 5. One operand is a pointer and the other is a null pointer constant,
+  // 6. One operand is a pointer to an object type and the other is a pointer to
+  // a qualified or unqualified version of void
+  return 0;
+}
+
+static node*
+make_cond(token* tok, node* cond, node* tru, node* fls)
+{
+  if (!is_scalar_type(cond->ty)) {
+    error_at(cond->tok,
+             "condition of ternary operator must have scalar type (has `%s`)",
+             type_name(cond->ty));
+  }
+
+  if (!is_valid_cond(tru, fls)) {
+    error_at(tok,
+             "invalid types for true and false branches of conditional "
+             "expression (have `%s` and `%s`)",
+             type_name(tru->ty),
+             type_name(fls->ty));
+  }
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_COND;
+  n->tok = tok;
+  n->ty = ty_void;
+  n->u.cond.cond = cond;
+  n->u.cond.true_expr = tru;
+  n->u.cond.false_expr = fls;
+  return n;
+}
+
 static token*
 eat(token** cursor, token_kind kind)
 {
@@ -813,6 +880,9 @@ declarator(token**, type**);
 
 static node*
 switch_stmt(token**);
+
+static node*
+conditional_expr(token**);
 
 /**
  * 6.7.7 - Type names
@@ -1167,7 +1237,7 @@ static node*
 assignment_expr(token** cursor)
 {
   // TODO - enforce that this expression produces an lvalue
-  node* base = logical_or_expr(cursor);
+  node* base = conditional_expr(cursor);
   for (;;) {
     token* eq_tok = *cursor;
     if (equal(cursor, TOKEN_EQUAL)) {
@@ -1177,6 +1247,26 @@ assignment_expr(token** cursor)
 
     return base;
   }
+}
+
+static node*
+conditional_expr(token** cursor)
+{
+  node* base = logical_or_expr(cursor);
+  for (;;) {
+    token* question_tok = *cursor;
+    if (equal(cursor, TOKEN_QUESTION)) {
+      node* true_expr = expr(cursor);
+      eat(cursor, TOKEN_COLON);
+      node* false_expr = conditional_expr(cursor);
+      base = make_cond(question_tok, base, true_expr, false_expr);
+      continue;
+    }
+
+    break;
+  }
+
+  return base;
 }
 
 /**

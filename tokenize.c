@@ -223,7 +223,6 @@ tokenize(void)
         }
 
         break;
-
       case ',':
         cursor->next = make_token(TOKEN_COMMA, c, 1);
         c++;
@@ -241,6 +240,10 @@ tokenize(void)
           cursor->next = make_token(TOKEN_DOT, c, 1);
         }
 
+        break;
+      case '?':
+        cursor->next = make_token(TOKEN_QUESTION, c, 1);
+        c++;
         break;
       default:
         if (isalpha(*c) || *c == '_') {
@@ -443,7 +446,7 @@ vdiagnostic_at(token* tok, const char* prefix, const char* fmt, va_list args)
 
   // We've stopped midway through a line - advance the cursor to the end of
   // the line.
-  while (*c++ != '\n' && *c++ != '\0')
+  while (*c++ != '\n' && *c != '\0')
     ;
 
   // Don't print the last newline.

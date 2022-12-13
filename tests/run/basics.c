@@ -1,6 +1,13 @@
 #include "test.h"
 
 int
+aborts()
+{
+  abort();
+  return 0;
+}
+
+int
 decls()
 {
   int x = 1;
@@ -43,6 +50,11 @@ branches()
   }
   ASSERT_EQ(r, 2);
   return 0;
+
+  ASSERT_EQ(0 ? 5 : 6, 6);
+  ASSERT_EQ(1 ? 5 : 6, 5);
+  ASSERT_EQ(1 ? 5 : aborts(), 5);
+  ASSERT_EQ(0 ? aborts() : 6, 6);
 }
 
 int

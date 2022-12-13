@@ -523,6 +523,30 @@ codegen_expr(node* n)
     load(n->u.member.field->ty);
     push("rax");
   }
+
+  if (n->kind == NODE_COND) {
+    // Similar codegen as a if statement, except we leave the true and false
+    // expr values on the stack.
+    char* false_label = gen_label_name(".L.cond.false", gen_label());
+    char* end_label = gen_label_name(".L.cond.end", gen_label());
+    codegen_expr(n->u.cond.cond);
+    pop("rax");
+    emit("  cmp $0, %%rax\n");
+    emit("  je %s\n", false_label);
+    codegen_expr(n->u.cond.true_expr);
+    emit("  jmp %s\n", end_label);
+    emit("%s:\n", false_label);
+    codegen_expr(n->u.cond.false_expr);
+    emit("%s:\n", end_label);
+
+    // Bit of a hack, here - we have some assertions that check that the stack
+    // push/pop count equals zero at a statement boundary; however, we're
+    // actually "pushing" two branches of code here, which confuses the logic of
+    // ensuring the count is zero.
+    //
+    // Just decrement the depth. shh, it's fine, scc.
+    depth--;
+  }
 }
 
 void
