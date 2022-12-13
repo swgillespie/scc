@@ -1755,7 +1755,13 @@ parameter_list(token** cursor, type* func_ty)
   parameter head = { 0 };
   parameter* params = &head;
   int seen_one_parameter = 0;
+  int seen_void = 0;
   while (!equal(cursor, TOKEN_RPAREN)) {
+    if (seen_void) {
+      error_at(*cursor,
+               "`void` must be the first and only parameter if specified");
+    }
+
     if (peek(cursor, TOKEN_ELLIPSIS)) {
       token* ellipsis = eat(cursor, TOKEN_ELLIPSIS);
       if (!seen_one_parameter) {
@@ -1769,7 +1775,17 @@ parameter_list(token** cursor, type* func_ty)
 
     type* declspec = declaration_specifiers(cursor, NULL);
     token* param_name = declarator(cursor, &declspec);
-    params = params->next = make_parameter(param_name, declspec);
+    // Prototypes can declare a `void` parameter list, but it can be the only
+    // parameter and it must not be named
+    if (declspec == ty_void) {
+      if (param_name) {
+        error_at(param_name, "argument may not have `void` type");
+      }
+
+      seen_void = 1;
+    } else {
+      params = params->next = make_parameter(param_name, declspec);
+    }
     if (!peek(cursor, TOKEN_RPAREN)) {
       eat(cursor, TOKEN_COMMA);
     }

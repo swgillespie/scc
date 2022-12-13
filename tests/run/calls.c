@@ -3,7 +3,7 @@
 extern int one;
 
 int
-returns_zero()
+returns_zero(void)
 {
   return 0;
 }
