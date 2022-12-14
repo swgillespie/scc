@@ -927,7 +927,8 @@ can_start_type_name(token** cursor)
   return peek(cursor, TOKEN_CHAR) || peek(cursor, TOKEN_INT) ||
          peek(cursor, TOKEN_BOOL) || peek(cursor, TOKEN_VOID) ||
          peek(cursor, TOKEN_STRUCT) || peek(cursor, TOKEN_UNION) ||
-         peek(cursor, TOKEN_EXTERN) || peek(cursor, TOKEN_TYPEDEF);
+         peek(cursor, TOKEN_EXTERN) || peek(cursor, TOKEN_TYPEDEF) ||
+         peek(cursor, TOKEN_STATIC);
 }
 
 /**
@@ -2079,7 +2080,15 @@ declaration_specifiers(token** cursor, storage_class* storage)
     }
 
     if (equal(cursor, TOKEN_STATIC)) {
-      // TODO(selfhost)
+      if (!storage) {
+        error_at(*cursor, "storage class not permitted here");
+      }
+
+      if (*storage != STORAGE_CLASS_NONE) {
+        error_at(*cursor, "more than one storage class not permitted");
+      }
+
+      *storage = STORAGE_CLASS_STATIC;
       continue;
     }
 

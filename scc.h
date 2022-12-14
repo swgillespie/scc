@@ -542,6 +542,7 @@ typedef enum storage_class
   STORAGE_CLASS_NONE,
   STORAGE_CLASS_EXTERN,
   STORAGE_CLASS_TYPEDEF,
+  STORAGE_CLASS_STATIC,
 } storage_class;
 
 typedef enum symbol_kind
