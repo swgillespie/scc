@@ -216,6 +216,7 @@ is_arithmetic_type(type* left)
     case TYPE_INT:
     case TYPE_CHAR:
     case TYPE_BOOL:
+    case TYPE_ENUM:
       return 1;
     default:
       return 0;
