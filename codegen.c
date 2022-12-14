@@ -555,8 +555,10 @@ codegen_stmt(node* base)
   for (node* n = base; n; n = n->next) {
     switch (n->kind) {
       case NODE_RETURN:
-        codegen_expr(n->u.return_value);
-        pop("rax");
+        if (n->u.return_value) {
+          codegen_expr(n->u.return_value);
+          pop("rax");
+        }
         emit("  leave\n");
         emit("  ret\n");
         break;

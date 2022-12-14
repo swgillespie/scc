@@ -1031,6 +1031,10 @@ static node*
 return_stmt(token** cursor)
 {
   token* ret_tok = eat(cursor, TOKEN_RETURN);
+  if (equal(cursor, TOKEN_SEMICOLON)) {
+    return make_return(ret_tok, NULL);
+  }
+
   node* val = expr(cursor);
   eat(cursor, TOKEN_SEMICOLON);
   return make_return(ret_tok, val);
