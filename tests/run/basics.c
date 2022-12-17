@@ -123,6 +123,10 @@ loops()
   int _c = _b++;
   ASSERT_EQ(_c, 0);
   ASSERT_EQ(_b, 1);
+
+  for (;;) {
+    break;
+  }
 }
 
 int

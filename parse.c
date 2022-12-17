@@ -1078,7 +1078,12 @@ static node*
 compound_stmt(token** cursor)
 {
   eat(cursor, TOKEN_LBRACE);
+#ifndef SCC_SELFHOST
   node head = { 0 };
+#else
+  node head;
+  head.next = 0;
+#endif /* SCC_SELFHOST */
   node* stmts = &head;
   push_scope();
   while (!peek(cursor, TOKEN_RBRACE)) {
@@ -1116,7 +1121,12 @@ switch_stmt(token** cursor)
   eat(cursor, TOKEN_LPAREN);
   node* cond = expr(cursor);
   eat(cursor, TOKEN_RPAREN);
+#ifndef SCC_SELFHOST
   switch_case head = { 0 };
+#else
+  switch_case head;
+  head.next = 0;
+#endif /* SCC_SELFHOST */
   push_switch(&head);
   node* body = stmt(cursor);
   pop_switch();
@@ -1149,7 +1159,7 @@ for_stmt(token** cursor)
 
   node* cond = expr_stmt(cursor);
   node* next = NULL;
-  if (!peek(cursor, TOKEN_LPAREN)) {
+  if (!peek(cursor, TOKEN_RPAREN)) {
     next = expr(cursor);
   }
 
