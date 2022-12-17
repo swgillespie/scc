@@ -1541,7 +1541,12 @@ postfix_expr(token** cursor)
     }
 
     if (equal(cursor, TOKEN_LPAREN)) {
+#ifndef SCC_SELFHOST
       node arg_head = { 0 };
+#else
+      node arg_head;
+      arg_head.next = 0;
+#endif /* SCC_SELFHOST */
       node* args = &arg_head;
 
       if (!equal(cursor, TOKEN_RPAREN)) {
@@ -1730,7 +1735,7 @@ string_literal(token** cursor)
     }
 
     memcpy(strbuf + count, strlit->string_value, len);
-    count += len;
+    count = count + len;
   }
 
   return make_string_literal(start, strdup(strbuf));
@@ -1762,7 +1767,12 @@ make_parameter(token* name, type* ty)
 static parameter*
 parameter_list(token** cursor, type* func_ty)
 {
+#ifndef SCC_SELFHOST
   parameter head = { 0 };
+#else
+  parameter head;
+  head.next = 0;
+#endif /* SCC_SELFHOST */
   parameter* params = &head;
   int seen_one_parameter = 0;
   int seen_void = 0;
@@ -1881,7 +1891,12 @@ struct_or_union_specifier(token** cursor)
   }
 
   if (equal(cursor, TOKEN_LBRACE)) {
+#ifndef SCC_SELFHOST
     field head = { 0 };
+#else
+    field head;
+    head.next = 0;
+#endif /* SCC_SELFHOST */
     field* fields = &head;
     // Stays at zero for unions, incremented for structs
     int offset = 0;
