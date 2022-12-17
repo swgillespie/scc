@@ -1896,7 +1896,34 @@ struct_or_union_specifier(token** cursor)
       ty_sym->is_struct = 1;
     }
 
-    define_type(ty_sym);
+    // Because this is a definition of a struct, two things need to happen here:
+    //  1. We must check to see if this struct has been defined already, since
+    //  this is prohibited
+    //  2. We must modify any previous declarations of this struct to be
+    //  complete, now that the definition is complete.
+    //
+    // 1 and 2 only matter for non-anonymous definitions.
+    if (name) {
+      type_lookup_scope ty_scope =
+        is_union ? TYPE_SCOPE_UNION : TYPE_SCOPE_STRUCT;
+      type_symbol* existing_sym = scope_lookup_type(name, ty_scope);
+      if (existing_sym) {
+        if (existing_sym->ty->size != 0) {
+          error_at(
+            name, "redefinition of `struct %s`", strndup(name->pos, name->len));
+        }
+
+        // The new definition that we just parsed takes precedence over the
+        // declaration.
+        existing_sym->ty->u.aggregate.fields = ty->u.aggregate.fields;
+        existing_sym->ty->size = ty->size;
+      } else {
+        // This new definition does not shadow an existing declaration, so we
+        // can define it here.
+        define_type(ty_sym);
+      }
+    }
+
     return ty;
   } else if (!name) {
     // 6.7.2.1.2 - Anonymous structs must have a definition
