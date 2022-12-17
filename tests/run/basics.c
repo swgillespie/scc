@@ -187,6 +187,17 @@ switches()
   ASSERT_EQ(res, 2);
 }
 
+void
+strings()
+{
+  char* str = "a"
+              "very"
+              "long"
+              "string";
+
+  ASSERT_EQ(strlen(str), 15);
+}
+
 int
 main()
 {
@@ -195,6 +206,7 @@ main()
   loops();
   scopes();
   switches();
+  strings();
   puts("basics ok");
   return 0;
 }

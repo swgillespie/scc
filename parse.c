@@ -1,6 +1,7 @@
 #include "scc.h"
 
 #define MAX_SWITCH_DEPTH 25
+#define MAX_STRING_LITERAL 2048
 
 /**
  * The current function being parsed, if any.
@@ -267,14 +268,12 @@ static node*
 make_symbol_ref(token* tok, symbol* sym);
 
 static node*
-make_string_literal(token* tok)
+make_string_literal(token* tok, char* contents)
 {
   static int counter = 0;
 
   char symbol_name_buf[4096];
   memset(symbol_name_buf, 0, 4096);
-
-  char* contents = tok->string_value;
   size_t len = strlen(contents);
   type* ty = make_array_type(ty_char, len);
   snprintf(symbol_name_buf, 4096, ".L.str.%d", counter++);
@@ -888,6 +887,9 @@ conditional_expr(token**);
 
 static node*
 external_declaration(token**, int);
+
+static node*
+string_literal(token**);
 
 /**
  * 6.7.7 - Type names
@@ -1695,12 +1697,33 @@ primary(token** cursor)
   }
 
   if (peek(cursor, TOKEN_STRING_LITERAL)) {
-    token* str_lit = eat(cursor, TOKEN_STRING_LITERAL);
-    return make_string_literal(str_lit);
+    return string_literal(cursor);
   }
 
   token* integer = eat(cursor, TOKEN_INTEGER);
   return make_node_const(integer, ty_int, integer->value);
+}
+
+static node*
+string_literal(token** cursor)
+{
+  // 6.4.5 String Literals
+  char strbuf[MAX_STRING_LITERAL];
+  memset(strbuf, 0, MAX_STRING_LITERAL);
+  size_t count = 0;
+  token* start = *cursor;
+  while (peek(cursor, TOKEN_STRING_LITERAL)) {
+    token* strlit = eat(cursor, TOKEN_STRING_LITERAL);
+    size_t len = strlen(strlit->string_value);
+    if (len + count >= MAX_STRING_LITERAL) {
+      error_at(start, "string literal too large");
+    }
+
+    memcpy(strbuf + count, strlit->string_value, len);
+    count += len;
+  }
+
+  return make_string_literal(start, strdup(strbuf));
 }
 
 static parameter*
