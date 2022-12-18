@@ -82,7 +82,7 @@ main() {
     stage1
     stage2
     stage3
-    ln -s $STAGE_3/scc ./scc
+    cp $STAGE_3/scc ./scc
 }
 
 main

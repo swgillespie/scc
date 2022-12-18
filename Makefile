@@ -12,6 +12,8 @@ TEST_SOURCES := tests/run/arith.c \
 
 TEST_EXES := $(basename $(TEST_SOURCES))
 
+all: scc test
+
 scc: $(OBJECTS)
 	$(CC) $(OBJECTS) -o scc
 
@@ -24,7 +26,7 @@ selfhost: scc
 test-run: $(TEST_EXES)
 	for exe in $(TEST_EXES); do ./$$exe; done
 
-test-compile: scc
+test-compile:
 	poetry run lit tests/compile
 
 test: test-compile test-run
@@ -32,11 +34,16 @@ test: test-compile test-run
 tests/run/helpers.o: tests/run/helpers.c
 	$(CC) -g -O2 -c -o $@ $<
 
-tests/run/%.s: tests/run/%.c scc
+tests/run/%.s: tests/run/%.c
 	./scc $< -o $@
 
 tests/run/%: tests/run/%.s tests/run/helpers.o
 	$(CC) -static -o $@ $< tests/run/helpers.o
+
+bootstrap: clean
+	./bootstrap.sh
+
+bootstrap-test: bootstrap test
 
 clean:
 	rm -f $(OBJECTS)
