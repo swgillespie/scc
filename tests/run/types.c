@@ -108,6 +108,17 @@ casts()
   ASSERT_EQ(&(((struct membertest*)0)->y), 4);
 }
 
+void
+alignment()
+{
+  ASSERT_EQ(_Alignof(int), 4);
+  ASSERT_EQ(_Alignof(long), 8);
+  ASSERT_EQ(_Alignof(char), 1);
+  ASSERT_EQ(_Alignof(void), 1);
+  ASSERT_EQ(_Alignof(_Bool), 1);
+  ASSERT_EQ(_Alignof(void*), 8);
+}
+
 int
 main()
 {
@@ -116,6 +127,7 @@ main()
   size_of();
   enums();
   casts();
+  alignment();
   puts("types ok");
   return 0;
 }

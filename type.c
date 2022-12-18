@@ -1,10 +1,14 @@
 #include "scc.h"
 
-type* ty_int = &(type){ .kind = TYPE_INT, .base = NULL, .size = 4 };
-type* ty_long = &(type){ .kind = TYPE_INT, .base = NULL, .size = 8 };
-type* ty_void = &(type){ .kind = TYPE_VOID, .base = NULL, .size = 0 };
-type* ty_char = &(type){ .kind = TYPE_CHAR, .base = NULL, .size = 1 };
-type* ty_bool = &(type){ .kind = TYPE_BOOL, .base = NULL, .size = 1 };
+type* ty_int = &(type){ .kind = TYPE_INT, .base = NULL, .size = 4, .align = 4 };
+type* ty_long =
+  &(type){ .kind = TYPE_INT, .base = NULL, .size = 8, .align = 8 };
+type* ty_void =
+  &(type){ .kind = TYPE_VOID, .base = NULL, .size = 0, .align = 1 };
+type* ty_char =
+  &(type){ .kind = TYPE_CHAR, .base = NULL, .size = 1, .align = 1 };
+type* ty_bool =
+  &(type){ .kind = TYPE_BOOL, .base = NULL, .size = 1, .align = 1 };
 
 type*
 make_pointer_type(type* base)
@@ -14,6 +18,7 @@ make_pointer_type(type* base)
   t->kind = TYPE_POINTER;
   t->base = base;
   t->size = 8 /* pointers are always 8 for this 64-bit compiler */;
+  t->align = 8; /* pointerse are always 8-bit aligned*/
   return t;
 }
 
@@ -26,6 +31,12 @@ make_array_type(type* base, int len)
   t->base = base;
   t->u.array_length = len;
   t->size = base->size * len;
+  // 6.5.3.4 The sizeof and alignof operators
+  //
+  // 6.5.3.4.3 alignof:
+  // When applied to an array type, the result is the alignment
+  // requirement of the element type.
+  t->align = base->align;
   return t;
 }
 
@@ -37,6 +48,7 @@ make_function_type(type* ret, parameter* params)
   t->kind = TYPE_FUNCTION;
   t->u.function.ret = ret;
   t->u.function.params = params;
+  t->align = 1;
   return t;
 }
 
@@ -69,6 +81,9 @@ make_struct(token* name, field* fields, int size)
   memset(t, 0, sizeof(type));
   t->kind = TYPE_STRUCT;
   t->size = size;
+  // This is not right; the correct alignment of a struct is the max alignment
+  // of its fields.
+  t->align = 1;
   t->u.aggregate.name = name;
   t->u.aggregate.fields = fields;
   return t;
@@ -81,6 +96,7 @@ make_union(token* name, field* fields, int size)
   memset(t, 0, sizeof(type));
   t->kind = TYPE_UNION;
   t->size = size;
+  t->align = 1;
   t->u.aggregate.name = name;
   t->u.aggregate.fields = fields;
   return t;
@@ -93,6 +109,7 @@ make_enum(token* name)
   memset(t, 0, sizeof(type));
   t->kind = TYPE_ENUM;
   t->size = ty_int->size;
+  t->align = ty_int->align;
   t->u.enum_name = name;
   return t;
 }

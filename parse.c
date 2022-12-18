@@ -1562,6 +1562,13 @@ unary_expr(token** cursor)
     return make_addrof(unop_tok, base);
   }
 
+  if (equal(cursor, TOKEN_ALIGNOF)) {
+    eat(cursor, TOKEN_LPAREN);
+    type* ty = decl_type_name(cursor);
+    eat(cursor, TOKEN_RPAREN);
+    return make_node_const(unop_tok, ty_long, ty->align);
+  }
+
   if (equal(cursor, TOKEN_SIZEOF)) {
     /**
      * One of the many ambiguities in the C grammar lurks here; the meaning of

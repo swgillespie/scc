@@ -176,6 +176,7 @@ typedef enum
   TOKEN_LONG,
   TOKEN_CONST,
   TOKEN_STATIC,
+  TOKEN_ALIGNOF,
   // These are real tokens.
   TOKEN_IDENT,
   TOKEN_CHAR_LITERAL,
@@ -275,6 +276,11 @@ typedef struct type
    * The size of this type, e.g. what sizeof returns.
    */
   int size;
+
+  /**
+   * The alignment of this type, e.g. what _Alignof returns.
+   */
+  int align;
 
   /**
    * If this type is a typedef, the aliased type.
