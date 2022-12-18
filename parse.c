@@ -899,6 +899,9 @@ static node*
 unary_expr(token**);
 
 static node*
+cast_expr(token** cursor);
+
+static node*
 logical_or_expr(token**);
 
 static node*
@@ -1456,7 +1459,7 @@ add_expr(token** cursor)
 static node*
 mul_expr(token** cursor)
 {
-  node* base = unary_expr(cursor);
+  node* base = cast_expr(cursor);
   for (;;) {
     token* op_tok = *cursor;
     if (equal(cursor, TOKEN_STAR)) {
@@ -1479,16 +1482,52 @@ mul_expr(token** cursor)
 }
 
 /**
+ * cast-expression ::=
+ *	unary-expression
+ *	"(" type-name ")" cast-expression
+ */
+static node*
+cast_expr(token** cursor)
+{
+  // A little bit of lookahead here, based on C's ambiguity:
+  token* start = *cursor;
+  if (equal(cursor, TOKEN_LPAREN)) {
+    // Whether this parenthesized expression is an expr or a type name is
+    // obvious except in the case where we're looking at an identifier; we must
+    // consult our identifier type table to figure out if this identifer
+    // references a type or a value.
+    //
+    // If it's a type, we'll parse the rest of this as a cast.
+    if (can_start_type_name(cursor)) {
+      type* typename = decl_type_name(cursor);
+      if (typename != ty_void && !is_scalar_type(typename)) {
+        error_at(start, "conversion to non-scalar type");
+      }
+      eat(cursor, TOKEN_RPAREN);
+      node* base = cast_expr(cursor);
+      return make_conv(start, base, typename);
+    }
+
+    // Otherwise, we'll need to back up and un-eat this paren so it's parsed as
+    // a primary expr later.
+    *cursor = start;
+  }
+
+  return unary_expr(cursor);
+}
+
+/**
  * A simplistic definition of an lvalue.
  */
 static int
 is_lvalue(node* n)
 {
-  if (n->kind == NODE_MEMBER || n->kind == NODE_MEMBER_DEREF) {
+  if (n->kind == NODE_MEMBER) {
     return is_lvalue(n->u.member.base);
   }
 
-  return n->kind == NODE_SYMBOL_REF || n->kind == NODE_DEREF;
+  return n->kind == NODE_SYMBOL_REF || n->kind == NODE_DEREF ||
+         n->kind == NODE_MEMBER_DEREF;
 }
 
 /*

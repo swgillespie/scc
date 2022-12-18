@@ -100,6 +100,14 @@ enums()
   ASSERT_EQ(INC_D, 9);
 }
 
+void
+casts()
+{
+  ASSERT_EQ((int)'a', 97);
+  ASSERT_EQ((char)97, 'a');
+  ASSERT_EQ(&(((struct membertest*)0)->y), 4);
+}
+
 int
 main()
 {
@@ -107,6 +115,7 @@ main()
   members();
   size_of();
   enums();
+  casts();
   puts("types ok");
   return 0;
 }
