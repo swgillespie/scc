@@ -210,6 +210,12 @@ integer_conversion_rank_compare(type* left, type* right)
 }
 
 int
+is_integer_type(type* ty)
+{
+  return is_arithmetic_type(ty);
+}
+
+int
 is_arithmetic_type(type* left)
 {
   switch (left->kind) {

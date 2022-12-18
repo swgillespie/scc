@@ -371,6 +371,9 @@ int
 integer_conversion_rank_compare(type* left, type* right);
 
 int
+is_integer_type(type* ty);
+
+int
 is_arithmetic_type(type* ty);
 
 int
@@ -435,6 +438,7 @@ typedef enum binop
   BINOP_LT_EQUAL,
   BINOP_GT,
   BINOP_GT_EQUAL,
+  BINOP_INCLUSIVE_OR,
 } binop;
 
 typedef struct node

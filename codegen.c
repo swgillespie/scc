@@ -310,6 +310,10 @@ codegen_expr(node* n)
         emit("  idiv %%rdi\n");
         push("rdx");
         break;
+      case BINOP_INCLUSIVE_OR:
+        emit("  or %%rdi, %%rax\n");
+        push("rax");
+        break;
       case BINOP_EQUAL:
       case BINOP_NOT_EQUAL:
       case BINOP_LT:

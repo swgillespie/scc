@@ -173,6 +173,9 @@ in_loop(void)
   return loop_depth > 0;
 }
 
+static void
+usual_arithmetic_conversions(node**, node**);
+
 static type_symbol*
 make_type_symbol(token* tok, type* ty)
 {
@@ -283,6 +286,34 @@ make_string_literal(token* tok, char* contents)
   symbols = sym;
   // TODO - deduplicate string literals
   return make_symbol_ref(tok, sym);
+}
+
+static node*
+make_bitwise_op(token* tok, binop op, node* left, node* right)
+{
+  // 6.5.2 Bitwise inclusive OR operator
+  if (!is_integer_type(left->ty)) {
+    error_at(left->tok,
+             "expected integer type for bitwise inclusive or (have `%s`)",
+             type_name(left->ty));
+  }
+
+  if (!is_integer_type(right->ty)) {
+    error_at(right->tok,
+             "expected integer type for bitwise inclusive or (have `%s`)",
+             type_name(right->ty));
+  }
+
+  usual_arithmetic_conversions(&left, &right);
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_BINOP;
+  n->tok = tok;
+  n->ty = left->ty;
+  n->u.binop.op = op;
+  n->u.binop.left = left;
+  n->u.binop.right = right;
+  return n;
 }
 
 static node*
@@ -873,6 +904,9 @@ logical_or_expr(token**);
 static node*
 logical_and_expr(token**);
 
+static node*
+inclusive_or_expr(token**);
+
 static type*
 declaration_specifiers(token**, storage_class*);
 
@@ -1288,11 +1322,34 @@ logical_or_expr(token** cursor)
 static node*
 logical_and_expr(token** cursor)
 {
-  node* base = relational_expr(cursor);
+  node* base = inclusive_or_expr(cursor);
   for (;;) {
     token* op_tok = *cursor;
     if (equal(cursor, TOKEN_DOUBLE_AMPERSAND)) {
       base = make_logical_and(op_tok, base, logical_and_expr(cursor));
+      continue;
+    }
+
+    break;
+  }
+
+  return base;
+}
+
+/*
+ * inclusive-OR-expression ::=
+ *   exclusive-OR-expression
+ *   inclusive-OR-expression "|" exclusive-OR-expression
+ */
+static node*
+inclusive_or_expr(token** cursor)
+{
+  node* base = relational_expr(cursor);
+  for (;;) {
+    token* op_tok = *cursor;
+    if (equal(cursor, TOKEN_PIPE)) {
+      base = make_bitwise_op(
+        op_tok, BINOP_INCLUSIVE_OR, base, inclusive_or_expr(cursor));
       continue;
     }
 
