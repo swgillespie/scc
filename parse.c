@@ -2026,6 +2026,8 @@ struct_or_union_specifier(token** cursor)
     int offset = 0;
     // Ignored for structs, used as the union's size for unions
     int max_member_size = 0;
+    // The max alignment seen for the fields this aggregate contains.
+    int max_align = 1;
     while (!equal(cursor, TOKEN_RBRACE)) {
       // Struct offsets begin at zero and are allocated at 4-byte boundaries.
       type* declspec = declaration_specifiers(cursor, NULL);
@@ -2046,12 +2048,18 @@ struct_or_union_specifier(token** cursor)
         }
       }
 
+      // `offset` points to the end of the last field. This field's alignment
+      // requirements may force us to add padding to this field.
+      offset = ALIGN_UP(offset, declspec->align);
       int field_offset = offset;
       if (!is_union) {
-        offset = (offset + declspec->size + 3) & -4;
+        offset = offset + declspec->size;
       }
       if (declspec->size > max_member_size) {
         max_member_size = declspec->size;
+      }
+      if (declspec->align > max_align) {
+        max_align = declspec->align;
       }
       fields = fields->next = make_field(decl, declspec, field_offset);
     }
@@ -2059,11 +2067,12 @@ struct_or_union_specifier(token** cursor)
     type* ty;
     type_symbol* ty_sym;
     if (is_union) {
-      ty = make_union(name, head.next, (max_member_size + 3) & -4);
+      ty = make_union(
+        name, head.next, ALIGN_UP(max_member_size, max_align), max_align);
       ty_sym = make_type_symbol(name, ty);
       ty_sym->is_union = 1;
     } else {
-      ty = make_struct(name, head.next, offset);
+      ty = make_struct(name, head.next, ALIGN_UP(offset, max_align), max_align);
       ty_sym = make_type_symbol(name, ty);
       ty_sym->is_struct = 1;
     }
@@ -2114,11 +2123,11 @@ struct_or_union_specifier(token** cursor)
     type* ty;
     type_symbol* new_sym;
     if (is_union) {
-      ty = make_union(name, NULL, 0);
+      ty = make_union(name, NULL, 0, 1);
       new_sym = make_type_symbol(name, ty);
       new_sym->is_union = 1;
     } else {
-      ty = make_struct(name, NULL, 0);
+      ty = make_struct(name, NULL, 0, 1);
       new_sym = make_type_symbol(name, ty);
       new_sym->is_struct = 1;
     }

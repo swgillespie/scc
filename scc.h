@@ -142,6 +142,8 @@ abort();
 
 #endif /* SCC_SELFHOST */
 
+#define ALIGN_UP(val, mask) (((val) + (mask)-1) & -(mask))
+
 /**
  * tokenize.c - C source tokenizer
  */
@@ -351,10 +353,10 @@ field*
 make_field(token* name, type* ty, int offset);
 
 type*
-make_struct(token* name, field* fields, int size);
+make_struct(token* name, field* fields, int size, int align);
 
 type*
-make_union(token* name, field* fields, int size);
+make_union(token* name, field* fields, int size, int align);
 
 type*
 make_enum(token* name);

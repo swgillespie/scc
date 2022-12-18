@@ -108,6 +108,15 @@ casts()
   ASSERT_EQ(&(((struct membertest*)0)->y), 4);
 }
 
+struct aligned
+{
+  int x;
+  void* y;
+  char z;
+  char p;
+  void* q;
+};
+
 void
 alignment()
 {
@@ -117,6 +126,14 @@ alignment()
   ASSERT_EQ(_Alignof(void), 1);
   ASSERT_EQ(_Alignof(_Bool), 1);
   ASSERT_EQ(_Alignof(void*), 8);
+
+  ASSERT_EQ(_Alignof(struct aligned), 8);
+  ASSERT_EQ(sizeof(struct aligned), 32);
+  ASSERT_EQ(&(((struct aligned*)0)->x), 0);
+  ASSERT_EQ(&(((struct aligned*)0)->y), 8); // 4 bytes of padding
+  ASSERT_EQ(&(((struct aligned*)0)->z), 16);
+  ASSERT_EQ(&(((struct aligned*)0)->p), 17); // 6 bytes of padding
+  ASSERT_EQ(&(((struct aligned*)0)->q), 24);
 }
 
 int

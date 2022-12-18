@@ -75,28 +75,26 @@ make_field(token* name, type* ty, int offset)
 }
 
 type*
-make_struct(token* name, field* fields, int size)
+make_struct(token* name, field* fields, int size, int align)
 {
   type* t = malloc(sizeof(type));
   memset(t, 0, sizeof(type));
   t->kind = TYPE_STRUCT;
   t->size = size;
-  // This is not right; the correct alignment of a struct is the max alignment
-  // of its fields.
-  t->align = 1;
+  t->align = align;
   t->u.aggregate.name = name;
   t->u.aggregate.fields = fields;
   return t;
 }
 
 type*
-make_union(token* name, field* fields, int size)
+make_union(token* name, field* fields, int size, int align)
 {
   type* t = malloc(sizeof(type));
   memset(t, 0, sizeof(type));
   t->kind = TYPE_UNION;
   t->size = size;
-  t->align = 1;
+  t->align = align;
   t->u.aggregate.name = name;
   t->u.aggregate.fields = fields;
   return t;
