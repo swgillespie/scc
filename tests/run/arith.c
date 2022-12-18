@@ -48,6 +48,7 @@ main()
   ASSERT_EQ(2 | 3, 3);
   ASSERT_EQ(33 & 19, 1);
   ASSERT_EQ(33 & -1, 33);
+  ASSERT_EQ('\0', 0);
 
   _Bool t = 1;
   _Bool f = 0;

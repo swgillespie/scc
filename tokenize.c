@@ -330,6 +330,9 @@ tokenize(void)
                   case 'n':
                     value |= '\n';
                     break;
+                  case '0':
+                    value |= '\0';
+                    break;
                   default:
                     error_at(cursor, "unrecognized escape sequence");
                     break;
