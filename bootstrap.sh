@@ -42,8 +42,9 @@ stage2() {
     local scc="$STAGE_1/scc"
     $scc main.c -o $STAGE_2/main.s
     gcc -c -o $STAGE_2/main.o $STAGE_2/main.s
+    $scc parse.c -o $STAGE_2/parse.s
+    gcc -c -o $STAGE_2/parse.o $STAGE_2/parse.s
     cp $STAGE_1/codegen.o $STAGE_2/codegen.o
-    cp $STAGE_1/parse.o $STAGE_2/parse.o
     cp $STAGE_1/tokenize.o $STAGE_2/tokenize.o
     cp $STAGE_1/type.o $STAGE_2/type.o
     cp $STAGE_1/builtins.o $STAGE_2/builtins.o
