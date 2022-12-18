@@ -1763,8 +1763,9 @@ primary(token** cursor)
     token* name = eat(cursor, TOKEN_IDENT);
     for (scope* s = current_scope; s; s = s->next) {
       for (symbol* sym = s->symbols; sym; sym = sym->next_in_scope) {
-        if (strncmp(name->pos, sym->name, name->len) == 0 &&
-            name->len == strlen(sym->name)) {
+        char* sym_name = sym->alias ? sym->alias : sym->name;
+        if (strncmp(name->pos, sym_name, name->len) == 0 &&
+            name->len == strlen(sym_name)) {
           if (sym->kind == SYMBOL_CONSTANT) {
             return make_node_const(name, ty_int, sym->u.constant_value);
           }
@@ -2343,8 +2344,13 @@ external_declaration(token** cursor, int in_compound_statement)
   storage_class storage = STORAGE_CLASS_NONE;
   type* declspec = declaration_specifiers(cursor, &storage);
   token* decl = NULL;
-  // Only used in block scope (in_compount_statement)
+// Only used in block scope (in_compount_statement)
+#ifndef SCC_SELFHOST
   node initializer_head = { 0 };
+#else
+  node initializer_head;
+  initializer_head.next = 0;
+#endif /* SCC_SELFHOST */
   node* initializers = &initializer_head;
   initializers = initializers->next = make_nop();
   if (!peek(cursor, TOKEN_SEMICOLON)) {
@@ -2362,6 +2368,16 @@ external_declaration(token** cursor, int in_compound_statement)
       // in a compound statement.
       if (storage == STORAGE_CLASS_EXTERN) {
         sym = make_symbol_global(decl, declspec, strndup(decl->pos, decl->len));
+      } else if (storage == STORAGE_CLASS_STATIC) {
+        // Block-scope symbols with `static` storage class are globals whose
+        // memory location is scoped to the scope in which it's defined.
+        //
+        // We accomplish this by mangling the name of the identifier to be
+        // globally unique and referencing it as if it were a global.
+        char* alias = strndup(decl->pos, decl->len);
+        char* name = gen_label_name(alias, gen_label());
+        sym = make_symbol_global(decl, declspec, name);
+        sym->alias = alias;
       } else if (storage != STORAGE_CLASS_TYPEDEF) {
         sym = make_symbol_local(decl, declspec);
       }
@@ -2382,7 +2398,7 @@ external_declaration(token** cursor, int in_compound_statement)
     if (in_compound_statement) {
       // A decl in a compound statement with an initializer is evaluated at the
       // point of the decl and assigned to the decl symbol.
-      if (sym->linkage != LINKAGE_NONE) {
+      if (sym->linkage == LINKAGE_EXTERNAL) {
         error_at(decl,
                  "declaration of block scope identifier with linkage can't "
                  "have an initializer");
@@ -2391,7 +2407,10 @@ external_declaration(token** cursor, int in_compound_statement)
       node* initializer = assignment_expr(cursor);
       node* init_stmt = make_expr_stmt(
         decl, make_node_assign(decl, make_symbol_ref(decl, sym), initializer));
-      initializers = initializers->next = init_stmt;
+      // TODO - initialization of globals
+      if (sym->kind == SYMBOL_LOCAL_VAR) {
+        initializers = initializers->next = init_stmt;
+      }
     } else {
       // Global decls can only be initialized by constants, which will be
       // handled by the code generator.
@@ -2421,7 +2440,12 @@ external_declaration(token** cursor, int in_compound_statement)
     // Declare locals for every parameter of this function and initialize
     // them with their corresponding function argument.
     int arg_count = 0;
+#ifndef SCC_SELFHOST
     node parameter_inits = { 0 };
+#else
+    node parameter_inits;
+    parameter_inits.next = 0;
+#endif /* SCC_SELFHOST */
     node* parameter_cursor = &parameter_inits;
     for (parameter* p = current_function->ty->u.function.params; p;
          p = p->next) {

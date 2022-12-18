@@ -203,6 +203,22 @@ strings()
 }
 
 int
+count()
+{
+  static int counter = 0;
+  return counter++;
+}
+
+void
+static_locals()
+{
+  ASSERT_EQ(count(), 0);
+  ASSERT_EQ(count(), 1);
+  ASSERT_EQ(count(), 2);
+  ASSERT_EQ(count(), 3);
+}
+
+int
 main()
 {
   decls();
@@ -211,6 +227,7 @@ main()
   scopes();
   switches();
   strings();
+  static_locals();
   puts("basics ok");
   return 0;
 }

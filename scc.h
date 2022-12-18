@@ -573,7 +573,14 @@ typedef struct symbol
    */
   struct symbol* next_in_scope;
   symbol_kind kind;
+  /**
+   * The codegen name of this symbol.
+   */
   char* name;
+  /**
+   * If set, this symbol must be referred to by this name.
+   */
+  char* alias;
   token* tok;
   type* ty;
   linkage linkage;
