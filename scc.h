@@ -439,6 +439,7 @@ typedef enum binop
   BINOP_GT,
   BINOP_GT_EQUAL,
   BINOP_INCLUSIVE_OR,
+  BINOP_AND,
 } binop;
 
 typedef struct node

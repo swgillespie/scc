@@ -314,6 +314,10 @@ codegen_expr(node* n)
         emit("  or %%rdi, %%rax\n");
         push("rax");
         break;
+      case BINOP_AND:
+        emit("  and %%rdi, %%rax\n");
+        push("rax");
+        break;
       case BINOP_EQUAL:
       case BINOP_NOT_EQUAL:
       case BINOP_LT:

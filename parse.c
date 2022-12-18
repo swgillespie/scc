@@ -294,13 +294,13 @@ make_bitwise_op(token* tok, binop op, node* left, node* right)
   // 6.5.2 Bitwise inclusive OR operator
   if (!is_integer_type(left->ty)) {
     error_at(left->tok,
-             "expected integer type for bitwise inclusive or (have `%s`)",
+             "expected integer type for bitwise operation (have `%s`)",
              type_name(left->ty));
   }
 
   if (!is_integer_type(right->ty)) {
     error_at(right->tok,
-             "expected integer type for bitwise inclusive or (have `%s`)",
+             "expected integer type for bitwise operation (have `%s`)",
              type_name(right->ty));
   }
 
@@ -907,6 +907,9 @@ logical_and_expr(token**);
 static node*
 inclusive_or_expr(token**);
 
+static node*
+and_expr(token**);
+
 static type*
 declaration_specifiers(token**, storage_class*);
 
@@ -1344,12 +1347,29 @@ logical_and_expr(token** cursor)
 static node*
 inclusive_or_expr(token** cursor)
 {
-  node* base = relational_expr(cursor);
+  node* base = and_expr(cursor);
   for (;;) {
     token* op_tok = *cursor;
     if (equal(cursor, TOKEN_PIPE)) {
       base = make_bitwise_op(
         op_tok, BINOP_INCLUSIVE_OR, base, inclusive_or_expr(cursor));
+      continue;
+    }
+
+    break;
+  }
+
+  return base;
+}
+
+static node*
+and_expr(token** cursor)
+{
+  node* base = relational_expr(cursor);
+  for (;;) {
+    token* op_tok = *cursor;
+    if (equal(cursor, TOKEN_AMPERSAND)) {
+      base = make_bitwise_op(op_tok, BINOP_AND, base, and_expr(cursor));
       continue;
     }
 
