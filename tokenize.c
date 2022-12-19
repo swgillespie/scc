@@ -348,7 +348,6 @@ tokenize(void)
                   case 'v':
                     value |= '\v';
                     break;
-
                   case 'n':
                     value |= '\n';
                     break;

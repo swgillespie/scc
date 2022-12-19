@@ -1865,6 +1865,19 @@ string_literal(token** cursor)
   return make_string_literal(start, strdup(strbuf));
 }
 
+static node*
+initializer(token** cursor, token* decl, symbol* sym)
+{
+  if (equal(cursor, TOKEN_LBRACE)) {
+    error_at(*cursor, "nyi: aggregate initializers");
+  }
+
+  node* init = assignment_expr(cursor);
+  node* init_stmt = make_expr_stmt(
+    decl, make_node_assign(decl, make_symbol_ref(decl, sym), init));
+  return init_stmt;
+}
+
 static parameter*
 make_parameter(token* name, type* ty)
 {
@@ -2459,12 +2472,11 @@ external_declaration(token** cursor, int in_compound_statement)
                  "have an initializer");
       }
 
-      node* initializer = assignment_expr(cursor);
-      node* init_stmt = make_expr_stmt(
-        decl, make_node_assign(decl, make_symbol_ref(decl, sym), initializer));
-      // TODO - initialization of globals
+      node* initializer_stmts = initializer(cursor, decl, sym);
       if (sym->kind == SYMBOL_LOCAL_VAR) {
-        initializers = initializers->next = init_stmt;
+        for (node* c = initializer_stmts; c; c = c->next) {
+          initializers = initializers->next = c;
+        }
       }
     } else {
       // Global decls can only be initialized by constants, which will be

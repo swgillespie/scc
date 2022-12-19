@@ -27,7 +27,7 @@ test-run: $(TEST_EXES)
 	for exe in $(TEST_EXES); do ./$$exe; done
 
 test-compile:
-	poetry run lit tests/compile
+	poetry run lit tests/compile --timeout=2
 
 test: test-compile test-run
 
