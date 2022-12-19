@@ -2,7 +2,22 @@
 
 #define MAX_LOOP_DEPTH 25
 
-static const char* argument_regs[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
+#ifndef SCC_SELFHOST
+static char* argument_regs[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
+#else
+static char* argument_regs[6];
+
+void
+init_codegen()
+{
+  argument_regs[0] = "rdi";
+  argument_regs[1] = "rsi";
+  argument_regs[2] = "rdx";
+  argument_regs[3] = "rcx";
+  argument_regs[4] = "r8";
+  argument_regs[5] = "r9";
+}
+#endif
 
 /** for debugging purposes, the current depth of the value stack */
 static int depth;
@@ -11,13 +26,13 @@ static int depth;
  * Stack of labels that break statements jump to, when codegen-ing loops.
  */
 static char* break_stack[MAX_LOOP_DEPTH];
-static int break_stack_len = 0;
+static int break_stack_len;
 
 /**
  * Stack of labels that continue statements jump to, when codegen-ing loops.
  */
 static char* continue_stack[MAX_LOOP_DEPTH];
-static int continue_stack_len = 0;
+static int continue_stack_len;
 
 static void
 push_break(char* break_label)
@@ -469,7 +484,7 @@ codegen_expr(node* n)
       error_at(n->tok, "greater than 6 parameters not currently supported");
     }
 
-    const char* arg = argument_regs[n->u.arg.count];
+    char* arg = argument_regs[n->u.arg.count];
     push(arg);
   }
 
@@ -684,7 +699,7 @@ calculate_frame_layout(symbol* func)
       error_at(sym->tok, "storage size is not known");
     }
 
-    offset -= sym->ty->size;
+    offset = offset - sym->ty->size;
     sym->u.frame_offset = offset;
   }
 
