@@ -371,17 +371,6 @@ codegen_expr(node* n)
   }
 
   if (n->kind == NODE_CALL) {
-#ifndef SCC_SELFHOST
-    builtin_function* builtin = builtin_lookup(n->u.call.name);
-    if (builtin) {
-      // Builtin functions are models as calls but result in unique codegen
-      // patterns.
-      builtin->codegen(n->u.call.args);
-      push("rax");
-      return;
-    }
-#endif /* SCC_SELFHOST */
-
     int num_args = 0;
     for (node* arg = n->u.call.args; arg; arg = arg->next) {
       codegen_expr(arg);

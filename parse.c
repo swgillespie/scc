@@ -1687,23 +1687,10 @@ postfix_expr(token** cursor)
       char* name;
       type* ret_ty = ty_int;
       if (!base->u.symbol_ref) {
-        // This can be one of two things: a compiler builtin, or an unbound
-        // identifier.
-        //
         // C permits calling unbound identifiers, so we'll defer to the code
         // generator to sort that out. All unbound identifiers are assumed to be
         // functions that take no parameters and return an int.
-        //
-        // Compiler builtins have their own signature that can be checked here.
         name = strndup(base->tok->pos, base->tok->len);
-#ifndef SCC_SELFHOST
-        builtin_function* builtin = builtin_lookup(name);
-        if (!builtin) {
-          warn_at(base->tok, "implicit declaration of function `%s`", name);
-        } else {
-          // TODO(check) parameter assignability checking
-        }
-#endif /* !SCC_SELFHOST */
       } else {
         name = base->u.symbol_ref->name;
         if (base->u.symbol_ref->ty->kind != TYPE_FUNCTION) {
