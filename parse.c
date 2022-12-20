@@ -722,6 +722,29 @@ make_label(token* tok, char* name)
   return n;
 }
 
+static node*
+make_initialize(token* tok, symbol* sym, initializer* init)
+{
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_INITIALIZE;
+  n->tok = tok;
+  n->ty = ty_void;
+  n->u.init.sym = sym;
+  n->u.init.initializer = init;
+  return n;
+}
+
+static initializer*
+make_assignment_initializer(node* expr)
+{
+  initializer* n = malloc(sizeof(initializer));
+  memset(n, 0, sizeof(initializer));
+  n->kind = INITIALIZER_ASSIGNMENT;
+  n->u.assignment_expr = expr;
+  return n;
+}
+
 static int
 is_valid_cond(type* tru, type* fls)
 {
@@ -1852,17 +1875,15 @@ string_literal(token** cursor)
   return make_string_literal(start, strdup(strbuf));
 }
 
-static node*
-initializer(token** cursor, token* decl, symbol* sym)
+static initializer*
+parse_initializer(token** cursor, token* decl, type* initializing_type)
 {
   if (equal(cursor, TOKEN_LBRACE)) {
-    error_at(*cursor, "nyi: aggregate initializers");
+    error_at(decl, "nyi: aggregate initializers");
   }
 
-  node* init = assignment_expr(cursor);
-  node* init_stmt = make_expr_stmt(
-    decl, make_node_assign(decl, make_symbol_ref(decl, sym), init));
-  return init_stmt;
+  node* init_expr = assignment_expr(cursor);
+  return make_assignment_initializer(convert(init_expr, initializing_type));
 }
 
 static parameter*
@@ -2459,11 +2480,9 @@ external_declaration(token** cursor, int in_compound_statement)
                  "have an initializer");
       }
 
-      node* initializer_stmts = initializer(cursor, decl, sym);
+      initializer* init = parse_initializer(cursor, decl, sym->ty);
       if (sym->kind == SYMBOL_LOCAL_VAR) {
-        for (node* c = initializer_stmts; c; c = c->next) {
-          initializers = initializers->next = c;
-        }
+        initializers = initializers->next = make_initialize(decl, sym, init);
       }
     } else {
       // Global decls can only be initialized by constants, which will be

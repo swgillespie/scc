@@ -425,6 +425,7 @@ typedef enum node_kind
   NODE_COND,
   NODE_SWITCH,
   NODE_LABEL,
+  NODE_INITIALIZE,
   /* Control flow */
   NODE_IF,
   /* TODO: it's probably possible to unify the two loop nodes */
@@ -543,6 +544,15 @@ typedef struct node
       struct node* false_expr;
     } cond;
     char* label_name;
+    /**
+     * For NODE_INITIALIZE, the initializer to evaluate and the symbol to
+     * initialize.
+     */
+    struct
+    {
+      struct symbol* sym;
+      struct initializer* initializer;
+    } init;
   } u;
 } node;
 
@@ -569,6 +579,30 @@ typedef enum symbol_kind
   SYMBOL_FUNCTION,
   SYMBOL_CONSTANT,
 } symbol_kind;
+
+typedef enum initializer_kind
+{
+  /**
+   * An assignment initializer, done with an assignment expression (`=`).
+   */
+  INITIALIZER_ASSIGNMENT,
+} initializer_kind;
+
+/**
+ * An initializer for a type.
+ */
+typedef struct initializer
+{
+  initializer_kind kind;
+  union
+  {
+    /**
+     * For INITIALIZER_ASSIGNMENT, the assignment expression whose value
+     * initializes the decl.
+     */
+    node* assignment_expr;
+  } u;
+} initializer;
 
 /**
  * A symbol, representing an object that is referenceable by name. It may or may

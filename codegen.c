@@ -682,6 +682,17 @@ codegen_stmt(node* base)
       case NODE_LABEL:
         emit("%s:\n", n->u.label_name);
         break;
+      case NODE_INITIALIZE:
+        SCC_ASSERT(n->tok,
+                   n->u.init.initializer->kind == INITIALIZER_ASSIGNMENT,
+                   "NYI: non-assignment initializers");
+        SCC_ASSERT(n->tok,
+                   n->u.init.sym->kind == SYMBOL_LOCAL_VAR,
+                   "NYI: non-local variable initialization");
+        codegen_expr(n->u.init.initializer->u.assignment_expr);
+        emit("  lea %d(%%rbp), %%rax\n", n->u.init.sym->u.frame_offset);
+        push("rax");
+        store(n->u.init.sym->ty);
       default:
         break;
     }
