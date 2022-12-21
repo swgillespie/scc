@@ -37,6 +37,10 @@ typedef struct scope
   struct scope* next;
   struct symbol* symbols;
   struct type_symbol* type_symbols;
+  /**
+   * Whether or not this scope is the global scope. Only used for assertions.
+   */
+  int is_global;
 } scope;
 
 static scope* current_scope;
@@ -60,6 +64,10 @@ pop_scope(void)
 static void
 define(symbol* sym)
 {
+  if (sym->kind == SYMBOL_LOCAL_VAR && current_scope->is_global) {
+    ice_at(NULL, "inserting a local variable into the global scope");
+  }
+
   sym->next_in_scope = current_scope->symbols;
   current_scope->symbols = sym;
 }
@@ -2582,6 +2590,9 @@ external_declaration(token** cursor, int in_compound_statement)
     parameter_inits.next = 0;
 #endif /* SCC_SELFHOST */
     node* parameter_cursor = &parameter_inits;
+    // Functions introduce a new scope; the first things declared in that scope
+    // are that function's arguments.
+    push_scope();
     for (parameter* p = current_function->ty->u.function.params; p;
          p = p->next) {
       symbol* arg = make_symbol_local(p->name, p->ty);
@@ -2594,6 +2605,7 @@ external_declaration(token** cursor, int in_compound_statement)
     }
 
     node* body = compound_stmt(cursor);
+    pop_scope();
     parameter_cursor->next = body;
     current_function->u.function.body = parameter_inits.next;
     current_function->next = symbols;
@@ -2633,6 +2645,7 @@ parse(token** cursor)
 {
   global_scope = malloc(sizeof(scope));
   memset(global_scope, 0, sizeof(scope));
+  global_scope->is_global = 1;
   current_scope = global_scope;
   while (!equal(cursor, TOKEN_EOF)) {
     external_declaration(cursor, 0);
