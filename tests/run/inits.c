@@ -53,6 +53,8 @@ structs()
 
 int some_numbers[] = { 1, 2, 3, 4, 5 };
 
+char* some_strings[] = { "foo", "bars", "bazes" };
+
 void
 global_arrays()
 {
@@ -64,6 +66,8 @@ global_arrays()
   ASSERT_EQ(some_numbers[4], 5);
   some_numbers[4] = 9;
   ASSERT_EQ(some_numbers[4], 9);
+  ASSERT_EQ(sizeof(some_strings), 3 * sizeof(char*));
+  ASSERT_EQ(strlen(some_strings[0]), 3);
 }
 
 int

@@ -884,6 +884,16 @@ codegen_global_initializer(symbol* sym)
   emit("%s:\n", sym->name);
   if (sym->ty->kind == TYPE_ARRAY) {
     for (initializer* i = sym->u.global_initializer; i; i = i->next) {
+      if (i->value->ty->base == ty_char) {
+        // These can only be initialized by string literals.
+        SCC_ASSERT(i->value->tok,
+                   i->value->kind == NODE_SYMBOL_REF,
+                   "non-symbol string literal ref");
+        char* strsym = i->value->u.symbol_ref->name;
+        emit("  .quad %s\n", strsym);
+        continue;
+      }
+
       // In a real compiler, we'd have a pretty sophisticated constant
       // evaluation system here where we'd evaluate each expression.
       //
