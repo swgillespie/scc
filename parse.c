@@ -1174,12 +1174,7 @@ static node*
 compound_stmt(token** cursor)
 {
   eat(cursor, TOKEN_LBRACE);
-#ifndef SCC_SELFHOST
   node head = { 0 };
-#else
-  node head;
-  head.next = 0;
-#endif /* SCC_SELFHOST */
   node* stmts = &head;
   push_scope();
   while (!peek(cursor, TOKEN_RBRACE)) {
@@ -1217,12 +1212,7 @@ switch_stmt(token** cursor)
   eat(cursor, TOKEN_LPAREN);
   node* cond = expr(cursor);
   eat(cursor, TOKEN_RPAREN);
-#ifndef SCC_SELFHOST
   switch_case head = { 0 };
-#else
-  switch_case head;
-  head.next = 0;
-#endif /* SCC_SELFHOST */
   push_switch(&head);
   node* body = stmt(cursor);
   pop_switch();
@@ -1720,12 +1710,7 @@ postfix_expr(token** cursor)
     }
 
     if (equal(cursor, TOKEN_LPAREN)) {
-#ifndef SCC_SELFHOST
       node arg_head = { 0 };
-#else
-      node arg_head;
-      arg_head.next = 0;
-#endif /* SCC_SELFHOST */
       node* args = &arg_head;
 
       if (!equal(cursor, TOKEN_RPAREN)) {
@@ -1922,12 +1907,7 @@ parse_initializer(token** cursor, token* decl, type* initializing_type)
       warn_at(decl, "braces around scalar initializer");
     }
 
-#ifndef SCC_SELFHOST
     initializer init = { 0 };
-#else
-    initializer init;
-    init.next = 0;
-#endif /* SCC_SELFHOST */
     initializer* inits = &init;
 
     int count = 0;
@@ -2019,12 +1999,7 @@ make_parameter(token* name, type* ty)
 static parameter*
 parameter_list(token** cursor, type* func_ty)
 {
-#ifndef SCC_SELFHOST
   parameter head = { 0 };
-#else
-  parameter head;
-  head.next = 0;
-#endif /* SCC_SELFHOST */
   parameter* params = &head;
   int seen_one_parameter = 0;
   int seen_void = 0;
@@ -2148,12 +2123,7 @@ struct_or_union_specifier(token** cursor)
   }
 
   if (equal(cursor, TOKEN_LBRACE)) {
-#ifndef SCC_SELFHOST
     field head = { 0 };
-#else
-    field head;
-    head.next = 0;
-#endif /* SCC_SELFHOST */
     field* fields = &head;
     // Stays at zero for unions, incremented for structs
     int offset = 0;
@@ -2532,13 +2502,8 @@ external_declaration(token** cursor, int in_compound_statement)
   storage_class storage = STORAGE_CLASS_NONE;
   type* declspec = declaration_specifiers(cursor, &storage);
   token* decl = NULL;
-// Only used in block scope (in_compount_statement)
-#ifndef SCC_SELFHOST
+  // Only used in block scope (in_compount_statement)
   node initializer_head = { 0 };
-#else
-  node initializer_head;
-  initializer_head.next = 0;
-#endif /* SCC_SELFHOST */
   node* initializers = &initializer_head;
   initializers = initializers->next = make_nop();
   if (!peek(cursor, TOKEN_SEMICOLON)) {
@@ -2625,12 +2590,7 @@ external_declaration(token** cursor, int in_compound_statement)
     // Declare locals for every parameter of this function and initialize
     // them with their corresponding function argument.
     int arg_count = 0;
-#ifndef SCC_SELFHOST
     node parameter_inits = { 0 };
-#else
-    node parameter_inits;
-    parameter_inits.next = 0;
-#endif /* SCC_SELFHOST */
     node* parameter_cursor = &parameter_inits;
     // Functions introduce a new scope; the first things declared in that scope
     // are that function's arguments.
