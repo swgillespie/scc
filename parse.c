@@ -1967,9 +1967,15 @@ parse_initializer(token** cursor, token* decl, type* initializing_type)
     }
 
     if (initializing_type->kind == TYPE_ARRAY) {
-      initializing_type->u.array_length = count;
-      initializing_type->size =
-        initializing_type->base->size * initializing_type->u.array_length;
+      if (initializing_type->u.array_length < count) {
+        warn_at(decl, "excess elements in array initializer");
+      }
+
+      if (initializing_type->u.array_length == 0) {
+        initializing_type->u.array_length = count;
+        initializing_type->size =
+          initializing_type->base->size * initializing_type->u.array_length;
+      }
     }
 
     if (is_scalar_type(initializing_type) &&

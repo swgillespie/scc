@@ -226,6 +226,42 @@ stack_swap(void)
 }
 
 /**
+ * Calls the given symbol and pushes its result onto the stack. This function
+ * ensures that the stack is aligned prior to calling any function.
+ *
+ * Assumes that the argument registers have already been set up.
+ */
+static void
+emit_call(char* function)
+{
+  // When calling variadic functions, the System V ABI requires that the
+  // number of vector arguments be written into %al. We don't support that, so
+  // we just write zero.
+  emit("  mov $0, %%al\n");
+  // Furthermore, if we're calling C functions, C generally expects the stack
+  // to be aligned to a 16-byte boundary. Since we are dynamically pushing and
+  // popping things from the stack as part of our codegen strategy, we have no
+  // idea what the stack pointer looks like when we get here. We must align it
+  // ourselves. SCC generally does not care about stack alignment because it
+  // doesn't generally emit instructions that require it, but other C
+  // compilers do, and we will call them (such as gcc-compiled functions in
+  // libc).
+  //
+  // First, we save the current stack pointer, for when we return;
+  push("rbp");
+  emit("  mov %%rsp, %%rbp\n");
+  // Then, we align our stack pointer downwards.
+  emit("  and $0xFFFFFFFFFFFFFFF0, %%rsp\n");
+  // With a properly aligned stack, we can now call...
+  emit("  call %s\n", function);
+  // ...restore our potentially-unaligned stack pointer...
+  emit("  mov %%rbp, %%rsp\n");
+  pop("rbp");
+  // ...and continue.
+  push("rax");
+}
+
+/**
  * Evaluates the constant expression `n` and returns its value.
  */
 static int consteval(node* n)
@@ -278,8 +314,15 @@ codegen_local_initialization(node* n)
   if (initialized_symbol->ty->kind == TYPE_ARRAY) {
     // Array initializers proceed in order and assign consecutive indices to the
     // array.
+    //
+    // First, though, we need to memset the entire array to zero - the spec
+    // requires it.
     emit("  lea %d(%%rbp), %%rax\n", initialized_symbol->u.frame_offset);
-    push("rax"); // [arr_ptr], rax = arr_ptr
+    emit("  mov %%rax, %%%s\n", argument_regs[0]);
+    emit("  mov $0, %%%s\n", argument_regs[1]);
+    emit("  mov $%d, %%%s\n", initialized_symbol->ty->size, argument_regs[2]);
+    emit_call("memset"); // memset returns a pointer to the memory it just set,
+                         // emit_call pushes it onto the stack
     int offset = 0;
     for (initializer* i = n->u.init.initializer; i; i = i->next) {
       // stack state at the start of the loop:
@@ -480,31 +523,7 @@ codegen_expr(node* n)
       pop(argument_regs[num_args-- - 1]);
     }
 
-    // When calling variadic functions, the System V ABI requires that the
-    // number of vector arguments be written into %al. We don't support that, so
-    // we just write zero.
-    emit("  mov $0, %%al\n");
-    // Furthermore, if we're calling C functions, C generally expects the stack
-    // to be aligned to a 16-byte boundary. Since we are dynamically pushing and
-    // popping things from the stack as part of our codegen strategy, we have no
-    // idea what the stack pointer looks like when we get here. We must align it
-    // ourselves. SCC generally does not care about stack alignment because it
-    // doesn't generally emit instructions that require it, but other C
-    // compilers do, and we will call them (such as gcc-compiled functions in
-    // libc).
-    //
-    // First, we save the current stack pointer, for when we return;
-    push("rbp");
-    emit("  mov %%rsp, %%rbp\n");
-    // Then, we align our stack pointer downwards.
-    emit("  and $0xFFFFFFFFFFFFFFF0, %%rsp\n");
-    // With a properly aligned stack, we can now call...
-    emit("  call %s\n", n->u.call.name);
-    // ...restore our potentially-unaligned stack pointer...
-    emit("  mov %%rbp, %%rsp\n");
-    pop("rbp");
-    // ...and continue.
-    push("rax");
+    emit_call(n->u.call.name);
   }
 
   if (n->kind == NODE_AND) {

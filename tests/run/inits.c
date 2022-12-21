@@ -15,6 +15,10 @@ scalars()
   ASSERT_EQ(arr[0], 1);
   ASSERT_EQ(arr[1], 2);
   ASSERT_EQ(arr[2], 3);
+
+  int abc[2] = { 5 };
+  ASSERT_EQ(abc[0], 5);
+  ASSERT_EQ(abc[1], 0);
 }
 
 int
