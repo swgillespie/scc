@@ -125,10 +125,6 @@ main(int argc, char** argv)
     output_file = stdout;
   }
 
-#ifdef SCC_SELFHOST
-  init_codegen();
-#endif
-
   FILE* stream = setup_preprocessor(input_file);
   load_file(argv[1], stream);
   token* tok = tokenize();

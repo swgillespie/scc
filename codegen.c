@@ -2,22 +2,7 @@
 
 #define MAX_LOOP_DEPTH 25
 
-#ifndef SCC_SELFHOST
 static char* argument_regs[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
-#else
-static char* argument_regs[6];
-
-void
-init_codegen()
-{
-  argument_regs[0] = "rdi";
-  argument_regs[1] = "rsi";
-  argument_regs[2] = "rdx";
-  argument_regs[3] = "rcx";
-  argument_regs[4] = "r8";
-  argument_regs[5] = "r9";
-}
-#endif
 
 /** for debugging purposes, the current depth of the value stack */
 static int depth;

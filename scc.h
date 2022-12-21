@@ -127,9 +127,6 @@ isdigit(int c);
 void
 abort();
 
-void
-init_codegen(void);
-
 #else
 
 #define _GNU_SOURCE
