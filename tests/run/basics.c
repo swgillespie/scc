@@ -218,6 +218,15 @@ static_locals()
   ASSERT_EQ(count(), 3);
 }
 
+void
+misc_exprs()
+{
+  int x = 0;
+  int y = (x = 1, 4);
+  ASSERT_EQ(x, 1);
+  ASSERT_EQ(y, 4);
+}
+
 int
 main()
 {
@@ -228,6 +237,7 @@ main()
   switches();
   strings();
   static_locals();
+  misc_exprs();
   puts("basics ok");
   return 0;
 }

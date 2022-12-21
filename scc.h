@@ -419,6 +419,7 @@ typedef enum node_kind
   NODE_POSTDECREMENT,
   NODE_MEMBER,
   NODE_MEMBER_DEREF,
+  NODE_COMMA,
   NODE_COND,
   NODE_SWITCH,
   NODE_LABEL,
@@ -550,6 +551,15 @@ typedef struct node
       struct symbol* sym;
       struct initializer* initializer;
     } init;
+    /**
+     * For NODE_COMMA, the left-side and right-side of the comma. The left side
+     * is evaluated for side-effects only, the right side produces a value.
+     */
+    struct
+    {
+      struct node* left;
+      struct node* right;
+    } comma;
   } u;
 } node;
 

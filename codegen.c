@@ -682,6 +682,14 @@ codegen_expr(node* n)
     // Just decrement the depth. shh, it's fine, scc.
     depth--;
   }
+
+  if (n->kind == NODE_COMMA) {
+    // Evaluate left for side-effects, pop its value off of the stack, and then
+    // evaluate right.
+    codegen_expr(n->u.comma.left);
+    pop_void();
+    codegen_expr(n->u.comma.right);
+  }
 }
 
 void

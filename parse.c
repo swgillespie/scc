@@ -840,6 +840,19 @@ make_cond(token* tok, node* cond, node* tru, node* fls)
   return n;
 }
 
+static node*
+make_comma(token* tok, node* left, node* right)
+{
+  node* n = malloc(sizeof(node));
+  memset(n, 0, sizeof(node));
+  n->kind = NODE_COMMA;
+  n->tok = tok;
+  n->ty = right->ty;
+  n->u.comma.left = left;
+  n->u.comma.right = right;
+  return n;
+}
+
 static token*
 eat(token** cursor, token_kind kind)
 {
@@ -1294,13 +1307,23 @@ do_stmt(token** cursor)
 }
 
 /**
- *  expression
- *    : assignment_expression
+ * expression ::=
+ *	assignment-expression
+ *	expression "," assignment-expression
  */
 static node*
 expr(token** cursor)
 {
-  return assignment_expr(cursor);
+  node* base = assignment_expr(cursor);
+  for (;;) {
+    token* comma = *cursor;
+    if (equal(cursor, TOKEN_COMMA)) {
+      base = make_comma(comma, base, expr(cursor));
+      continue;
+    }
+
+    return base;
+  }
 }
 
 /**
