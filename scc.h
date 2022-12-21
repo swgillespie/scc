@@ -743,4 +743,9 @@ gen_label_name(char* prefix, int num);
     }                                                                          \
   } while (0)
 
+/**
+ * Command-line options
+ */
+extern int enable_warnings;
+
 #endif /* __SCC_H__ */

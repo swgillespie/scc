@@ -513,6 +513,10 @@ error_at(token* tok, const char* fmt, ...)
 void
 warn_at(token* tok, const char* fmt, ...)
 {
+  if (!enable_warnings) {
+    return;
+  }
+
   va_list args;
   va_start(args, fmt);
   vdiagnostic_at(tok, "warning", fmt, args);

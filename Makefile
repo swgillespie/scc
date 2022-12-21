@@ -36,7 +36,7 @@ tests/run/helpers.o: tests/run/helpers.c
 	$(CC) -g -O2 -c -o $@ $<
 
 tests/run/%.s: tests/run/%.c
-	./scc $< -o $@
+	./scc -w $< -o $@
 
 tests/run/%: tests/run/%.s tests/run/helpers.o
 	$(CC) -static -o $@ $< tests/run/helpers.o

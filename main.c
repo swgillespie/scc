@@ -2,6 +2,7 @@
 
 FILE* output_file;
 char* input_file;
+int enable_warnings;
 
 static void
 usage()
@@ -13,6 +14,8 @@ usage()
 static void
 parse_options(int argc, char** argv)
 {
+  enable_warnings = 1;
+
   int i = 1;
   if (argc < 2) {
     usage();
@@ -21,6 +24,12 @@ parse_options(int argc, char** argv)
   while (i < argc) {
     if (strcmp("-h", argv[i]) == 0 || strcmp("--help", argv[i]) == 0) {
       usage();
+    }
+
+    // gcc/clang: -w disables all warnings
+    if (strcmp("-w", argv[i]) == 0) {
+      enable_warnings = 0;
+      i++;
     }
 
     if (strcmp("-o", argv[i]) == 0) {
