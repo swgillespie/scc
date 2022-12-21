@@ -117,6 +117,25 @@ scope_lookup_type(token* name, type_lookup_scope tls)
 }
 
 /**
+ * Looks up a symbol in the value namespace.
+ */
+static symbol*
+scope_lookup(token* name)
+{
+  for (scope* s = current_scope; s; s = s->next) {
+    for (symbol* sym = s->symbols; sym; sym = sym->next_in_scope) {
+      char* sym_name = sym->alias ? sym->alias : sym->name;
+      if (strncmp(name->pos, sym_name, name->len) == 0 &&
+          name->len == strlen(sym_name)) {
+        return sym;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+/**
  * State for switch statements.
  */
 
@@ -984,6 +1003,13 @@ can_start_type_name(token** cursor)
   // C is quite ambiguous; an identifier can begin a decl, but only if that
   // identifier refers to a typedef.
   if (peek(cursor, TOKEN_IDENT)) {
+    // It may be the case that there is a type definition for this token;
+    // however, it may be shadowed by an identifier for a symbol in the value
+    // namespace, which supersedes the initial declaration. We check that first.
+    if (scope_lookup(*cursor)) {
+      return 0;
+    }
+
     if (scope_lookup_type(*cursor, TYPE_SCOPE_TYPEDEF)) {
       return 1;
     }
@@ -1817,18 +1843,13 @@ primary(token** cursor)
 
   if (peek(cursor, TOKEN_IDENT)) {
     token* name = eat(cursor, TOKEN_IDENT);
-    for (scope* s = current_scope; s; s = s->next) {
-      for (symbol* sym = s->symbols; sym; sym = sym->next_in_scope) {
-        char* sym_name = sym->alias ? sym->alias : sym->name;
-        if (strncmp(name->pos, sym_name, name->len) == 0 &&
-            name->len == strlen(sym_name)) {
-          if (sym->kind == SYMBOL_CONSTANT) {
-            return make_node_const(name, ty_int, sym->u.constant_value);
-          }
-
-          return make_symbol_ref(name, sym);
-        }
+    symbol* sym = scope_lookup(name);
+    if (sym) {
+      if (sym->kind == SYMBOL_CONSTANT) {
+        return make_node_const(name, ty_int, sym->u.constant_value);
       }
+
+      return make_symbol_ref(name, sym);
     }
 
     /* you would expect that we'd emit an error here if an identifier isn't
