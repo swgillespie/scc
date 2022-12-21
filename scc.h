@@ -583,9 +583,13 @@ typedef enum symbol_kind
 typedef enum initializer_kind
 {
   /**
-   * An assignment initializer, done with an assignment expression (`=`).
+   * A scalar initializer. Used for brace initialization when the decl being
+   * initialized is scalar, or for `=` assignments.
+   *
+   * In either case, a single expr is evaluated and its value becomes the decl's
+   * value.
    */
-  INITIALIZER_ASSIGNMENT,
+  INITIALIZER_SCALAR,
 } initializer_kind;
 
 /**
@@ -593,6 +597,7 @@ typedef enum initializer_kind
  */
 typedef struct initializer
 {
+  struct initializer* next;
   initializer_kind kind;
   union
   {
@@ -600,7 +605,7 @@ typedef struct initializer
      * For INITIALIZER_ASSIGNMENT, the assignment expression whose value
      * initializes the decl.
      */
-    node* assignment_expr;
+    node* scalar_expr;
   } u;
 } initializer;
 

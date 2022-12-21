@@ -736,12 +736,12 @@ make_initialize(token* tok, symbol* sym, initializer* init)
 }
 
 static initializer*
-make_assignment_initializer(node* expr)
+make_scalar_initializer(node* expr)
 {
   initializer* n = malloc(sizeof(initializer));
   memset(n, 0, sizeof(initializer));
-  n->kind = INITIALIZER_ASSIGNMENT;
-  n->u.assignment_expr = expr;
+  n->kind = INITIALIZER_SCALAR;
+  n->u.scalar_expr = expr;
   return n;
 }
 
@@ -1879,11 +1879,52 @@ static initializer*
 parse_initializer(token** cursor, token* decl, type* initializing_type)
 {
   if (equal(cursor, TOKEN_LBRACE)) {
-    error_at(decl, "nyi: aggregate initializers");
+    if (is_scalar_type(initializing_type)) {
+      // GCC warns about this, clang doesn't. I'm with GCC, I think this is a
+      // weird thing to do.
+      //
+      // Scalars are a special case because, each time a new brace is added, we
+      // are "recursing" into a field of an array or aggregate; you can keep
+      // adding braces to a scalar initializer and it will remain scalar.
+      //
+      // It means that initializers like `int x = {{{{{5}}}}}` are fine, though
+      // both clang and gcc warn you for it. (clang says you have "too many
+      // braces", lol)
+      warn_at(decl, "braces around scalar initializer");
+    }
+
+#ifndef SCC_SELFHOST
+    initializer init = { 0 };
+#else
+    initializer init;
+    init.next = 0;
+#endif /* SCC_SELFHOST */
+    initializer* inits = &init;
+
+    int count = 0;
+    while (!equal(cursor, TOKEN_RBRACE)) {
+      inits = inits->next = parse_initializer(cursor, decl, initializing_type);
+      if (!peek(cursor, TOKEN_RBRACE) || peek(cursor, TOKEN_COMMA)) {
+        eat(cursor, TOKEN_COMMA);
+      }
+
+      count++;
+    }
+
+    if (is_scalar_type(initializing_type)) {
+      // gcc/clang: how is this only a warning?
+      if (count != 1) {
+        warn_at(decl, "excess elements in scalar initializer");
+      }
+
+      return inits;
+    }
+
+    error_at(decl, "NYI: non-scalar initializers");
   }
 
   node* init_expr = assignment_expr(cursor);
-  return make_assignment_initializer(convert(init_expr, initializing_type));
+  return make_scalar_initializer(convert(init_expr, initializing_type));
 }
 
 static parameter*

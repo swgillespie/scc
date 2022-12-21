@@ -8,7 +8,8 @@ TEST_SOURCES := tests/run/arith.c \
 	tests/run/basics.c \
 	tests/run/pointers.c \
 	tests/run/calls.c \
-	tests/run/types.c
+	tests/run/types.c \
+	tests/run/inits.c
 
 TEST_EXES := $(basename $(TEST_SOURCES))
 
