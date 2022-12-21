@@ -289,8 +289,8 @@ codegen_local_initialization(node* n)
              "NYI: non-local variable initialization");
 
   symbol* initialized_symbol = n->u.init.sym;
-  if (is_scalar_type(initialized_symbol->ty) &&
-      initialized_symbol->ty->kind != TYPE_ARRAY) {
+  type* ty = initialized_symbol->ty;
+  if (is_scalar_type(ty) && ty->kind != TYPE_ARRAY) {
     // Scalar initialization only uses the first initializer, if there are
     // multiple.
     //
@@ -311,7 +311,7 @@ codegen_local_initialization(node* n)
     return;
   }
 
-  if (initialized_symbol->ty->kind == TYPE_ARRAY) {
+  if (ty->kind == TYPE_ARRAY) {
     // Array initializers proceed in order and assign consecutive indices to the
     // array.
     //
@@ -320,7 +320,7 @@ codegen_local_initialization(node* n)
     emit("  lea %d(%%rbp), %%rax\n", initialized_symbol->u.frame_offset);
     emit("  mov %%rax, %%%s\n", argument_regs[0]);
     emit("  mov $0, %%%s\n", argument_regs[1]);
-    emit("  mov $%d, %%%s\n", initialized_symbol->ty->size, argument_regs[2]);
+    emit("  mov $%d, %%%s\n", ty->size, argument_regs[2]);
     emit_call("memset"); // memset returns a pointer to the memory it just set,
                          // emit_call pushes it onto the stack
     int offset = 0;
@@ -335,19 +335,60 @@ codegen_local_initialization(node* n)
         pop("rax"); // [arr_ptr, expr], rax = arr_ptr
         emit("  add $%d, %%rax\n",
              offset); // [arr_ptr, expr], rax = arr_ptr + offset
-        push("rax");  // [arr_ptr, expr, addr_ptr + offset]
+        push("rax");  // [arr_ptr, expr, arr_ptr + offset]
       }
 
       // [arr_ptr, expr, addr_ptr + offset]
-      store(initialized_symbol->ty->base);                  // [arr_ptr]
-      offset = offset + initialized_symbol->ty->base->size; // TODO - alignment
+      store(ty->base);                  // [arr_ptr]
+      offset = offset + ty->base->size; // TODO - alignment
     }
 
     pop("rax"); // []
     return;
   }
 
-  ice_at(n->tok, "nyi: non-scalar initialization");
+  if (ty->kind == TYPE_STRUCT) {
+    // Struct initialization begins the same as array initialization, with a
+    // memset.
+    //
+    // In fact, this is all quite similar and could maybe be combined...
+    emit("  lea %d(%%rbp), %%rax\n", initialized_symbol->u.frame_offset);
+    emit("  mov %%rax, %%%s\n", argument_regs[0]);
+    emit("  mov $0, %%%s\n", argument_regs[1]);
+    emit("  mov $%d, %%%s\n", ty->size, argument_regs[2]);
+    emit_call("memset"); // memset returns a pointer to the memory it just set,
+                         // emit_call pushes it onto the stack
+    field* field_cursor = ty->u.aggregate.fields;
+    for (initializer* i = n->u.init.initializer; i; i = i->next) {
+      // stack state at the start of the loop:
+      // [struct_ptr]
+
+      if (!field_cursor) {
+        continue;
+      }
+
+      int offset = field_cursor->offset;
+      stack_dup();            // [struct_ptr, struct_ptr]
+      codegen_expr(i->value); // [struct_ptr, struct_ptr, expr]
+      stack_swap();           // [struct_ptr, expr, struct_ptr]
+
+      if (offset != 0) {
+        pop("rax"); // [struct_ptr, expr], rax = struct_ptr
+        emit("  add $%d, %%rax\n",
+             offset); // [struct_ptr, expr], rax = struct_ptr + offset
+        push("rax");  // [struct_ptr, expr, struct_ptr + offset]
+      }
+
+      // [struct_ptr, expr, addr_ptr + offset]
+      store(field_cursor->ty); // [struct_ptr]
+      field_cursor = field_cursor->next;
+    }
+
+    pop("rax"); // []
+    return;
+  }
+
+  ice_at(n->tok, "nyi: some weird kind of initialization");
 }
 
 /**

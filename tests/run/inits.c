@@ -9,7 +9,11 @@ scalars()
   ASSERT_EQ(y, 5);
   int z = {};
   ASSERT_EQ(z, 0);
+}
 
+void
+arrays()
+{
   int arr[] = { 1, 2, 3 };
   ASSERT_EQ(sizeof(arr), 3 * sizeof(int));
   ASSERT_EQ(arr[0], 1);
@@ -21,10 +25,37 @@ scalars()
   ASSERT_EQ(abc[1], 0);
 }
 
+struct abc
+{
+  int a;
+  int b;
+  int c;
+};
+
+void
+structs()
+{
+  struct abc x = { 1, 2, 3 };
+  ASSERT_EQ(x.a, 1);
+  ASSERT_EQ(x.b, 2);
+  ASSERT_EQ(x.c, 3);
+
+  struct abc q = {};
+  ASSERT_EQ(q.a, 0);
+  ASSERT_EQ(q.b, 0);
+  ASSERT_EQ(q.c, 0);
+
+  struct abc r = { 4 };
+  ASSERT_EQ(r.a, 4);
+  ASSERT_EQ(r.b, 0);
+  ASSERT_EQ(r.c, 0);
+}
+
 int
 main()
 {
   scalars();
+  arrays();
   puts("inits ok");
   return 0;
 }
