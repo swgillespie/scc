@@ -626,6 +626,11 @@ typedef struct symbol
   token* tok;
   type* ty;
   linkage linkage;
+  /**
+   * For SYMBOL_GLOBAL_VAR, if set, indicates that this is a string literal
+   * and this is the literal's data.
+   */
+  char* string_literal_data;
   union
   {
     /**
@@ -643,10 +648,10 @@ typedef struct symbol
     } function;
 
     /**
-     * For SYMBOL_GLOBAL_VAR, if set, indicates that this is a string literal
-     * and this is the literal's data.
+     * For SYMBOL_GLOBAL_VAR, an initializer for this value.
      */
-    char* string_literal_data;
+    initializer* global_initializer;
+
     /*
      * For SYMBOL_CONSTANT, the value of this constant.
      */

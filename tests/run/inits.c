@@ -51,11 +51,27 @@ structs()
   ASSERT_EQ(r.c, 0);
 }
 
+int some_numbers[] = { 1, 2, 3, 4, 5 };
+
+void
+global_arrays()
+{
+  ASSERT_EQ(sizeof(some_numbers), 5 * sizeof(int));
+  ASSERT_EQ(some_numbers[0], 1);
+  ASSERT_EQ(some_numbers[1], 2);
+  ASSERT_EQ(some_numbers[2], 3);
+  ASSERT_EQ(some_numbers[3], 4);
+  ASSERT_EQ(some_numbers[4], 5);
+  some_numbers[4] = 9;
+  ASSERT_EQ(some_numbers[4], 9);
+}
+
 int
 main()
 {
   scalars();
   arrays();
+  global_arrays();
   puts("inits ok");
   return 0;
 }

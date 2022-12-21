@@ -868,6 +868,46 @@ codegen_function(symbol* sym)
 }
 
 static void
+codegen_global_initializer(symbol* sym)
+{
+  if (!sym->u.global_initializer) {
+    // No initializer => zero initialization.
+    emit(".bss\n");
+    emit(".globl %s\n", sym->name);
+    emit("%s:\n", sym->name);
+    emit("  .zero %d\n", sym->ty->size);
+    return;
+  }
+
+  emit(".data\n");
+  emit(".globl %s\n", sym->name);
+  emit("%s:\n", sym->name);
+  if (sym->ty->kind == TYPE_ARRAY) {
+    for (initializer* i = sym->u.global_initializer; i; i = i->next) {
+      // In a real compiler, we'd have a pretty sophisticated constant
+      // evaluation system here where we'd evaluate each expression.
+      //
+      // We're not a real compiler, and we're not going to do that.
+      int value = consteval(i->value);
+      switch (sym->ty->base->size) {
+        case 4:
+          emit("  .long %d\n", value);
+          break;
+        case 8:
+          emit("  .quad %d\n", value);
+          break;
+        default:
+          ice_at(NULL, "unknown type size for global initializer");
+      }
+    }
+
+    return;
+  }
+
+  ice_at(NULL, "NYI: global initializer");
+}
+
+static void
 codegen_global(symbol* sym)
 {
   if (sym->linkage == LINKAGE_EXTERNAL) {
@@ -878,7 +918,12 @@ codegen_global(symbol* sym)
     error_at(sym->tok, "storage size is not known");
   }
 
-  char* data = sym->u.string_literal_data;
+  if (!sym->string_literal_data) {
+    codegen_global_initializer(sym);
+    return;
+  }
+
+  char* data = sym->string_literal_data;
   if (!data) {
     emit(".bss\n");
     emit(".globl %s\n", sym->name);

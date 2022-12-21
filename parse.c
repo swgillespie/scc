@@ -308,7 +308,7 @@ make_string_literal(token* tok, char* contents)
   type* ty = make_array_type(ty_char, len);
   snprintf(symbol_name_buf, 4096, ".L.str.%d", counter++);
   symbol* sym = make_symbol_global(tok, ty, strdup(symbol_name_buf));
-  sym->u.string_literal_data = contents;
+  sym->string_literal_data = contents;
   sym->next = symbols;
   symbols = sym;
   // TODO - deduplicate string literals
@@ -2564,7 +2564,8 @@ external_declaration(token** cursor, int in_compound_statement)
     } else {
       // Global decls can only be initialized by constants, which will be
       // handled by the code generator.
-      error_at(*cursor, "nyi: global decl initializers");
+      initializer* init = parse_initializer(cursor, decl, sym->ty);
+      sym->u.global_initializer = init;
     }
   }
 
