@@ -878,7 +878,7 @@ codegen_global(symbol* sym)
     error_at(sym->tok, "storage size is not known");
   }
 
-  char* data = sym->u.global_data;
+  char* data = sym->u.string_literal_data;
   if (!data) {
     emit(".bss\n");
     emit(".globl %s\n", sym->name);

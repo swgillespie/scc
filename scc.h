@@ -643,9 +643,10 @@ typedef struct symbol
     } function;
 
     /**
-     * For SYMBOL_GLOBAL_VAR, the data of the global.
+     * For SYMBOL_GLOBAL_VAR, if set, indicates that this is a string literal
+     * and this is the literal's data.
      */
-    char* global_data;
+    char* string_literal_data;
     /*
      * For SYMBOL_CONSTANT, the value of this constant.
      */
