@@ -53,3 +53,4 @@ clean:
 	rm -f $(TEST_SOURCES:.c=.s)
 	rm -f tests/helpers.o
 	rm -f scc
+	rm -rf ./scratch/bootstrap

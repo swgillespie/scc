@@ -208,8 +208,21 @@ store(type* ty)
 static void
 stack_dup(void)
 {
-  emit("  mov (%%rsp), %%rax\n\n");
+  emit("  mov (%%rsp), %%rax\n");
   push("rax");
+}
+
+/**
+ * Swaps the order of the two elements on the top of the stack.
+ */
+static void
+stack_swap(void)
+{
+  // [a, b]
+  pop("rax");  // [a], rax = b
+  pop("rdi");  // [], rax = b, rdi = a
+  push("rax"); // [b], rax = b, rdi = a
+  push("rdi"); // [b, a], rax = b, rdi = a
 }
 
 /**
@@ -240,7 +253,8 @@ codegen_local_initialization(node* n)
              "NYI: non-local variable initialization");
 
   symbol* initialized_symbol = n->u.init.sym;
-  if (is_scalar_type(initialized_symbol->ty)) {
+  if (is_scalar_type(initialized_symbol->ty) &&
+      initialized_symbol->ty->kind != TYPE_ARRAY) {
     // Scalar initialization only uses the first initializer, if there are
     // multiple.
     //
@@ -258,6 +272,35 @@ codegen_local_initialization(node* n)
     emit("  lea %d(%%rbp), %%rax\n", initialized_symbol->u.frame_offset);
     push("rax");
     store(n->u.init.sym->ty);
+    return;
+  }
+
+  if (initialized_symbol->ty->kind == TYPE_ARRAY) {
+    // Array initializers proceed in order and assign consecutive indices to the
+    // array.
+    emit("  lea %d(%%rbp), %%rax\n", initialized_symbol->u.frame_offset);
+    push("rax"); // [arr_ptr], rax = arr_ptr
+    int offset = 0;
+    for (initializer* i = n->u.init.initializer; i; i = i->next) {
+      // stack state at the start of the loop:
+      // [arr_ptr]
+      stack_dup();            // [arr_ptr, arr_ptr]
+      codegen_expr(i->value); // [arr_ptr, arr_ptr, expr]
+      stack_swap();           // [arr_ptr, expr, arr_ptr]
+
+      if (offset != 0) {
+        pop("rax"); // [arr_ptr, expr], rax = arr_ptr
+        emit("  add $%d, %%rax\n",
+             offset); // [arr_ptr, expr], rax = arr_ptr + offset
+        push("rax");  // [arr_ptr, expr, addr_ptr + offset]
+      }
+
+      // [arr_ptr, expr, addr_ptr + offset]
+      store(initialized_symbol->ty->base);                  // [arr_ptr]
+      offset = offset + initialized_symbol->ty->base->size; // TODO - alignment
+    }
+
+    pop("rax"); // []
     return;
   }
 

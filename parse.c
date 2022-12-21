@@ -1907,7 +1907,8 @@ static initializer*
 parse_initializer(token** cursor, token* decl, type* initializing_type)
 {
   if (equal(cursor, TOKEN_LBRACE)) {
-    if (is_scalar_type(initializing_type)) {
+    if (is_scalar_type(initializing_type) &&
+        initializing_type->kind != TYPE_ARRAY) {
       // GCC warns about this, clang doesn't. I'm with GCC, I think this is a
       // weird thing to do.
       //
@@ -1965,16 +1966,21 @@ parse_initializer(token** cursor, token* decl, type* initializing_type)
       count++;
     }
 
-    if (is_scalar_type(initializing_type)) {
-      // gcc/clang: how is this only a warning?
-      if (count != 1) {
-        warn_at(decl, "excess elements in scalar initializer");
-      }
-
-      return inits;
+    if (initializing_type->kind == TYPE_ARRAY) {
+      initializing_type->u.array_length = count;
+      initializing_type->size =
+        initializing_type->base->size * initializing_type->u.array_length;
     }
 
-    error_at(decl, "NYI: non-scalar initializers");
+    if (is_scalar_type(initializing_type) &&
+        initializing_type->kind != TYPE_ARRAY) {
+      // gcc/clang: how is this only a warning?
+      if (count >= 1) {
+        warn_at(decl, "excess elements in scalar initializer");
+      }
+    }
+
+    return init.next;
   }
 
   node* init_expr = assignment_expr(cursor);
@@ -2090,9 +2096,14 @@ declarator(token** cursor, type** base)
     }
 
     if (equal(cursor, TOKEN_LBRACKET)) {
-      token* array_len = eat(cursor, TOKEN_INTEGER);
+      int array_len = 0;
+      if (!peek(cursor, TOKEN_RBRACKET)) {
+        token* len_tok = eat(cursor, TOKEN_INTEGER);
+        array_len = len_tok->value;
+      }
+
       eat(cursor, TOKEN_RBRACKET);
-      *base = make_array_type(*base, array_len->value);
+      *base = make_array_type(*base, array_len);
       continue;
     }
 

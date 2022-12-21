@@ -98,19 +98,9 @@ setup_preprocessor(char* filename)
     close(pipefd[0]);
     dup2(pipefd[1], 1 /* stdout */);
     close(pipefd[1]);
-#ifndef SCC_SELFHOST
     char* args[] = {
       "/usr/bin/gcc", "-E", "-P", "-D__SCC__=1", filename, NULL
     };
-#else
-    char* args[6];
-    args[0] = "/usr/bin/gcc";
-    args[1] = "-E";
-    args[2] = "-P";
-    args[3] = "-D__SCC__=1";
-    args[4] = filename;
-    args[5] = NULL;
-#endif                           /* !SCC_SELFHOST */
     execv("/usr/bin/gcc", args); // does not return
     exit(0);
   } else {
