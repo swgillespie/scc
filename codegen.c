@@ -229,6 +229,41 @@ static int consteval(node* n)
 void
 codegen_expr(node*);
 
+static void
+codegen_local_initialization(node* n)
+{
+  SCC_ASSERT(n->tok,
+             n->kind == NODE_INITIALIZE,
+             "codegen_local_initialization on non-init node");
+  SCC_ASSERT(n->tok,
+             n->u.init.sym->kind == SYMBOL_LOCAL_VAR,
+             "NYI: non-local variable initialization");
+
+  symbol* initialized_symbol = n->u.init.sym;
+  if (is_scalar_type(initialized_symbol->ty)) {
+    // Scalar initialization only uses the first initializer, if there are
+    // multiple.
+    //
+    // If there are no initializers, then we're initializing it to a zero value.
+    if (!n->u.init.initializer) {
+      emit("  mov $0, %%rax\n");
+      push("rax");
+    } else {
+      // Otherwise, eval the initializer. This silently drops any other
+      // initializers that were present, but that's fine, because this is C and
+      // we issued a warning earlier about it.
+      codegen_expr(n->u.init.initializer->value);
+    }
+
+    emit("  lea %d(%%rbp), %%rax\n", initialized_symbol->u.frame_offset);
+    push("rax");
+    store(n->u.init.sym->ty);
+    return;
+  }
+
+  ice_at(n->tok, "nyi: non-scalar initialization");
+}
+
 /**
  * Given an expression that produces an lvalue, push the address of that lvalue
  * onto the value stack.
@@ -683,16 +718,8 @@ codegen_stmt(node* base)
         emit("%s:\n", n->u.label_name);
         break;
       case NODE_INITIALIZE:
-        SCC_ASSERT(n->tok,
-                   n->u.init.initializer->kind == INITIALIZER_SCALAR,
-                   "NYI: non-assignment initializers");
-        SCC_ASSERT(n->tok,
-                   n->u.init.sym->kind == SYMBOL_LOCAL_VAR,
-                   "NYI: non-local variable initialization");
-        codegen_expr(n->u.init.initializer->u.scalar_expr);
-        emit("  lea %d(%%rbp), %%rax\n", n->u.init.sym->u.frame_offset);
-        push("rax");
-        store(n->u.init.sym->ty);
+        codegen_local_initialization(n);
+        break;
       default:
         break;
     }

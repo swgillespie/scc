@@ -763,12 +763,11 @@ make_initialize(token* tok, symbol* sym, initializer* init)
 }
 
 static initializer*
-make_scalar_initializer(node* expr)
+make_initializer(node* expr)
 {
   initializer* n = malloc(sizeof(initializer));
   memset(n, 0, sizeof(initializer));
-  n->kind = INITIALIZER_SCALAR;
-  n->u.scalar_expr = expr;
+  n->value = expr;
   return n;
 }
 
@@ -1931,8 +1930,34 @@ parse_initializer(token** cursor, token* decl, type* initializing_type)
     initializer* inits = &init;
 
     int count = 0;
+    field* field_cursor;
+    if (initializing_type->kind == TYPE_STRUCT) {
+      field_cursor = initializing_type->u.aggregate.fields;
+    }
+
     while (!equal(cursor, TOKEN_RBRACE)) {
-      inits = inits->next = parse_initializer(cursor, decl, initializing_type);
+      // What is the type of the initializer that we are expecting?
+      //
+      // For starters, it's the initializing type, since the initializer of
+      // scalars is the same type as the decl.
+      type* child_ty = initializing_type;
+      // For arrays, it's the base type of the array.
+      if (initializing_type->kind == TYPE_ARRAY) {
+        child_ty = initializing_type->base;
+      }
+
+      // For structs, they are initialized field by field.
+      if (initializing_type->kind == TYPE_STRUCT) {
+        if (field_cursor) {
+          child_ty = field_cursor->ty;
+          field_cursor = field_cursor->next;
+        } else {
+          warn_at(*cursor, "excess elements in struct initializer");
+          child_ty = ty_int;
+        }
+      }
+
+      inits = inits->next = parse_initializer(cursor, decl, child_ty);
       if (!peek(cursor, TOKEN_RBRACE) || peek(cursor, TOKEN_COMMA)) {
         eat(cursor, TOKEN_COMMA);
       }
@@ -1953,7 +1978,7 @@ parse_initializer(token** cursor, token* decl, type* initializing_type)
   }
 
   node* init_expr = assignment_expr(cursor);
-  return make_scalar_initializer(convert(init_expr, initializing_type));
+  return make_initializer(convert(init_expr, initializing_type));
 }
 
 static parameter*

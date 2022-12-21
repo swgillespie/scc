@@ -598,15 +598,7 @@ typedef enum initializer_kind
 typedef struct initializer
 {
   struct initializer* next;
-  initializer_kind kind;
-  union
-  {
-    /**
-     * For INITIALIZER_ASSIGNMENT, the assignment expression whose value
-     * initializes the decl.
-     */
-    node* scalar_expr;
-  } u;
+  struct node* value;
 } initializer;
 
 /**
