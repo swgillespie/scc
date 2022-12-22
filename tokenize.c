@@ -127,7 +127,8 @@ tokenize(void)
         c++;
         break;
       case '+':
-        if (*++c == '+') {
+        c++;
+        if (*c == '+') {
           cursor->next = make_token(TOKEN_PLUS_PLUS, c - 1, 2);
           c++;
         } else {
@@ -136,7 +137,8 @@ tokenize(void)
 
         break;
       case '-':
-        if (*++c == '-') {
+        c++;
+        if (*c == '-') {
           cursor->next = make_token(TOKEN_MINUS_MINUS, c - 1, 2);
           c++;
         } else if (*c == '>') {
@@ -152,7 +154,8 @@ tokenize(void)
         c++;
         break;
       case '/':
-        if (*++c == '*') {
+        c++;
+        if (*c == '*') {
           c++;
           while (1) {
             if (*c == '*') {
@@ -171,8 +174,8 @@ tokenize(void)
 
         if (*c == '/') {
           c++;
-          while (*++c != '\n')
-            ;
+          while (*c != '\n')
+            c++;
 
           continue;
         }
@@ -184,7 +187,8 @@ tokenize(void)
         c++;
         break;
       case '=':
-        if (*++c == '=') {
+        c++;
+        if (*c == '=') {
           cursor->next = make_token(TOKEN_DOUBLE_EQ, c - 1, 2);
           c++;
         } else {
@@ -193,7 +197,8 @@ tokenize(void)
 
         break;
       case '!':
-        if (*++c == '=') {
+        c++;
+        if (*c == '=') {
           cursor->next = make_token(TOKEN_NOT_EQ, c - 1, 2);
           c++;
         } else {
@@ -202,7 +207,8 @@ tokenize(void)
 
         break;
       case '<':
-        if (*++c == '=') {
+        c++;
+        if (*c == '=') {
           cursor->next = make_token(TOKEN_LT_EQ, c - 1, 2);
           c++;
         } else {
@@ -211,7 +217,8 @@ tokenize(void)
 
         break;
       case '>':
-        if (*++c == '=') {
+        c++;
+        if (*c == '=') {
           cursor->next = make_token(TOKEN_GT_EQ, c - 1, 2);
           c++;
         } else {
@@ -220,7 +227,8 @@ tokenize(void)
 
         break;
       case '&':
-        if (*++c == '&') {
+        c++;
+        if (*c == '&') {
           cursor->next = make_token(TOKEN_DOUBLE_AMPERSAND, c - 1, 2);
           c++;
         } else {
@@ -229,7 +237,8 @@ tokenize(void)
 
         break;
       case '|':
-        if (*++c == '|') {
+        c++;
+        if (*c == '|') {
           cursor->next = make_token(TOKEN_DOUBLE_PIPE, c - 1, 2);
           c++;
         } else {
@@ -242,8 +251,10 @@ tokenize(void)
         c++;
         break;
       case '.':
-        if (*++c == '.') {
-          if (*++c == '.') {
+        c++;
+        if (*c == '.') {
+          c++;
+          if (*c == '.') {
             cursor->next = make_token(TOKEN_ELLIPSIS, c - 2, 3);
             c++;
           } else {
@@ -310,7 +321,9 @@ tokenize(void)
                 warn_at(cursor, "multi-character character constant");
                 warned = 1;
               }
-              value <<= 8;
+
+              value = value * 256;
+              // value <<= 8;
             }
 
             seen_char_already = 1;
@@ -319,40 +332,40 @@ tokenize(void)
                 c++;
                 switch (*c) {
                   case '\'':
-                    value |= '\'';
+                    value = value | '\'';
                     break;
                   case '\"':
-                    value |= '"';
+                    value = value | '"';
                     break;
                   case '\\':
-                    value |= '\\';
+                    value = value | '\\';
                     break;
                   case '\?':
-                    value |= '\?';
+                    value = value | '\?';
                     break;
                   case 'a':
-                    value |= '\a';
+                    value = value | '\a';
                     break;
                   case 'b':
-                    value |= '\b';
+                    value = value | '\b';
                     break;
                   case 'f':
-                    value |= '\f';
+                    value = value | '\f';
                     break;
                   case 'r':
-                    value |= '\r';
+                    value = value | '\r';
                     break;
                   case 't':
-                    value |= '\t';
+                    value = value | '\t';
                     break;
                   case 'v':
-                    value |= '\v';
+                    value = value | '\v';
                     break;
                   case 'n':
-                    value |= '\n';
+                    value = value | '\n';
                     break;
                   case '0':
-                    value |= '\0';
+                    value = value | '\0';
                     break;
                   default:
                     error_at(cursor, "unrecognized escape sequence");
@@ -362,7 +375,7 @@ tokenize(void)
                 break;
               }
               default:
-                value |= *c;
+                value = value | *c;
                 break;
             }
 
