@@ -861,6 +861,72 @@ codegen_function(symbol* sym)
 }
 
 static void
+codegen_initializer(initializer* inits, type* ty)
+{
+  if (ty->kind == TYPE_ARRAY) {
+    for (initializer* i = inits; i; i = i->next) {
+      codegen_initializer(i, ty->base);
+    }
+
+    return;
+  }
+
+  if (ty->kind == TYPE_STRUCT) {
+
+    // Initializing a struct is a little special, since we need to insert zeroed
+    // padding sections where appropriate.
+    int offset = 0;
+    field* cursor = ty->u.aggregate.fields;
+    for (initializer* i = inits; i; i = i->next) {
+      if (!cursor) {
+        break;
+      }
+
+      int padding = ALIGN_UP(offset, cursor->ty->align) - offset;
+      if (padding != 0) {
+        emit("  .zero %d\n", padding);
+      }
+      offset = ALIGN_UP(offset, cursor->ty->align);
+      offset = offset + cursor->ty->size;
+      codegen_initializer(i, cursor->ty);
+      cursor = cursor->next;
+    }
+
+    if (offset < ty->size) {
+      emit("  .zero %d\n", ty->size - offset);
+    }
+
+    return;
+  }
+
+  if (inits->value->ty->base == ty_char) {
+    // These can only be initialized by string literals.
+    SCC_ASSERT(inits->value->tok,
+               inits->value->kind == NODE_SYMBOL_REF,
+               "non-symbol string literal ref");
+    char* strsym = inits->value->u.symbol_ref->name;
+    emit("  .quad %s\n", strsym);
+    return;
+  }
+
+  // In a real compiler, we'd have a pretty sophisticated constant
+  // evaluation system here where we'd evaluate each expression.
+  //
+  // We're not a real compiler, and we're not going to do that.
+  int value = consteval(inits->value);
+  switch (ty->size) {
+    case 4:
+      emit("  .long %d\n", value);
+      break;
+    case 8:
+      emit("  .quad %d\n", value);
+      break;
+    default:
+      ice_at(NULL, "unknown type size for global initializer");
+  }
+}
+
+static void
 codegen_global_initializer(symbol* sym)
 {
   if (!sym->u.global_initializer) {
@@ -875,39 +941,7 @@ codegen_global_initializer(symbol* sym)
   emit(".data\n");
   emit(".globl %s\n", sym->name);
   emit("%s:\n", sym->name);
-  if (sym->ty->kind == TYPE_ARRAY) {
-    for (initializer* i = sym->u.global_initializer; i; i = i->next) {
-      if (i->value->ty->base == ty_char) {
-        // These can only be initialized by string literals.
-        SCC_ASSERT(i->value->tok,
-                   i->value->kind == NODE_SYMBOL_REF,
-                   "non-symbol string literal ref");
-        char* strsym = i->value->u.symbol_ref->name;
-        emit("  .quad %s\n", strsym);
-        continue;
-      }
-
-      // In a real compiler, we'd have a pretty sophisticated constant
-      // evaluation system here where we'd evaluate each expression.
-      //
-      // We're not a real compiler, and we're not going to do that.
-      int value = consteval(i->value);
-      switch (sym->ty->base->size) {
-        case 4:
-          emit("  .long %d\n", value);
-          break;
-        case 8:
-          emit("  .quad %d\n", value);
-          break;
-        default:
-          ice_at(NULL, "unknown type size for global initializer");
-      }
-    }
-
-    return;
-  }
-
-  ice_at(NULL, "NYI: global initializer");
+  codegen_initializer(sym->u.global_initializer, sym->ty);
 }
 
 static void
