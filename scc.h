@@ -597,6 +597,11 @@ typedef enum initializer_kind
    * value.
    */
   INITIALIZER_SCALAR,
+  /**
+   * An aggregate initializer, used for brace initialization where there is
+   * greater than one initializer and we are initializing an aggregate type.
+   */
+  INITIALIZER_AGGREGATE,
 } initializer_kind;
 
 /**
@@ -605,7 +610,12 @@ typedef enum initializer_kind
 typedef struct initializer
 {
   struct initializer* next;
-  struct node* value;
+  initializer_kind kind;
+  union
+  {
+    struct node* value;
+    struct initializer* initializers;
+  } u;
 } initializer;
 
 /**

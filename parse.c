@@ -767,7 +767,18 @@ make_initializer(node* expr)
 {
   initializer* n = malloc(sizeof(initializer));
   memset(n, 0, sizeof(initializer));
-  n->value = expr;
+  n->kind = INITIALIZER_SCALAR;
+  n->u.value = expr;
+  return n;
+}
+
+static initializer*
+make_initializer_aggregate(initializer* inits)
+{
+  initializer* n = malloc(sizeof(initializer));
+  memset(n, 0, sizeof(initializer));
+  n->kind = INITIALIZER_AGGREGATE;
+  n->u.initializers = inits;
   return n;
 }
 
@@ -1987,9 +1998,14 @@ parse_initializer(token** cursor, token* decl, type* initializing_type)
       if (count >= 1) {
         warn_at(decl, "excess elements in scalar initializer");
       }
+
+      // Special case: scalars are not initialized via aggregate initializers,
+      // we implicitly drop all other initializers that we parsed here during
+      // codegen (we warned you...)
+      return init.next;
     }
 
-    return init.next;
+    return make_initializer_aggregate(init.next);
   }
 
   node* init_expr = assignment_expr(cursor);

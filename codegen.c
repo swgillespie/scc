@@ -284,10 +284,13 @@ codegen_local_initialization(node* n)
       emit("  mov $0, %%rax\n");
       push("rax");
     } else {
+      SCC_ASSERT(n->tok,
+                 n->u.init.initializer->kind == INITIALIZER_SCALAR,
+                 "non-scalar initializer for scalar");
       // Otherwise, eval the initializer. This silently drops any other
       // initializers that were present, but that's fine, because this is C and
       // we issued a warning earlier about it.
-      codegen_expr(n->u.init.initializer->value);
+      codegen_expr(n->u.init.initializer->u.value);
     }
 
     emit("  lea %d(%%rbp), %%rax\n", initialized_symbol->u.frame_offset);
@@ -309,12 +312,16 @@ codegen_local_initialization(node* n)
     emit_call("memset"); // memset returns a pointer to the memory it just set,
                          // emit_call pushes it onto the stack
     int offset = 0;
-    for (initializer* i = n->u.init.initializer; i; i = i->next) {
+    initializer* agg_init = n->u.init.initializer;
+    SCC_ASSERT(n->tok,
+               agg_init->kind == INITIALIZER_AGGREGATE,
+               "non-aggregate initializer of aggregate");
+    for (initializer* i = agg_init->u.initializers; i; i = i->next) {
       // stack state at the start of the loop:
       // [arr_ptr]
-      stack_dup();            // [arr_ptr, arr_ptr]
-      codegen_expr(i->value); // [arr_ptr, arr_ptr, expr]
-      stack_swap();           // [arr_ptr, expr, arr_ptr]
+      stack_dup();              // [arr_ptr, arr_ptr]
+      codegen_expr(i->u.value); // [arr_ptr, arr_ptr, expr]
+      stack_swap();             // [arr_ptr, expr, arr_ptr]
 
       if (offset != 0) {
         pop("rax"); // [arr_ptr, expr], rax = arr_ptr
@@ -344,7 +351,11 @@ codegen_local_initialization(node* n)
     emit_call("memset"); // memset returns a pointer to the memory it just set,
                          // emit_call pushes it onto the stack
     field* field_cursor = ty->u.aggregate.fields;
-    for (initializer* i = n->u.init.initializer; i; i = i->next) {
+    initializer* agg_init = n->u.init.initializer;
+    SCC_ASSERT(n->tok,
+               agg_init->kind == INITIALIZER_AGGREGATE,
+               "non-aggregate initializer of aggregate");
+    for (initializer* i = agg_init->u.initializers; i; i = i->next) {
       // stack state at the start of the loop:
       // [struct_ptr]
 
@@ -353,9 +364,9 @@ codegen_local_initialization(node* n)
       }
 
       int offset = field_cursor->offset;
-      stack_dup();            // [struct_ptr, struct_ptr]
-      codegen_expr(i->value); // [struct_ptr, struct_ptr, expr]
-      stack_swap();           // [struct_ptr, expr, struct_ptr]
+      stack_dup();              // [struct_ptr, struct_ptr]
+      codegen_expr(i->u.value); // [struct_ptr, struct_ptr, expr]
+      stack_swap();             // [struct_ptr, expr, struct_ptr]
 
       if (offset != 0) {
         pop("rax"); // [struct_ptr, expr], rax = struct_ptr
@@ -861,7 +872,40 @@ codegen_function(symbol* sym)
 }
 
 static void
-codegen_initializer(initializer* inits, type* ty)
+codegen_scalar_initializer(node* value, type* ty)
+{
+  if (ty->base == ty_char) {
+    // These can only be initialized by string literals.
+    SCC_ASSERT(value->tok,
+               value->kind == NODE_SYMBOL_REF,
+               "non-symbol string literal ref");
+    char* strsym = value->u.symbol_ref->name;
+    emit("  .quad %s\n", strsym);
+    return;
+  }
+
+  // In a real compiler, we'd have a pretty sophisticated constant
+  // evaluation system here where we'd evaluate each expression.
+  //
+  // We're not a real compiler, and we're not going to do that.
+  int scalar_value = consteval(value);
+  switch (ty->size) {
+    case 4:
+      emit("  .long %d\n", scalar_value);
+      break;
+    case 8:
+      emit("  .quad %d\n", scalar_value);
+      break;
+    default:
+      ice_at(NULL, "unknown type size for global initializer");
+  }
+}
+
+static void
+codegen_initializer(initializer*, type*);
+
+static void
+codegen_aggregate_initializer(initializer* inits, type* ty)
 {
   if (ty->kind == TYPE_ARRAY) {
     for (initializer* i = inits; i; i = i->next) {
@@ -872,7 +916,6 @@ codegen_initializer(initializer* inits, type* ty)
   }
 
   if (ty->kind == TYPE_STRUCT) {
-
     // Initializing a struct is a little special, since we need to insert zeroed
     // padding sections where appropriate.
     int offset = 0;
@@ -898,31 +941,15 @@ codegen_initializer(initializer* inits, type* ty)
 
     return;
   }
+}
 
-  if (inits->value->ty->base == ty_char) {
-    // These can only be initialized by string literals.
-    SCC_ASSERT(inits->value->tok,
-               inits->value->kind == NODE_SYMBOL_REF,
-               "non-symbol string literal ref");
-    char* strsym = inits->value->u.symbol_ref->name;
-    emit("  .quad %s\n", strsym);
-    return;
-  }
-
-  // In a real compiler, we'd have a pretty sophisticated constant
-  // evaluation system here where we'd evaluate each expression.
-  //
-  // We're not a real compiler, and we're not going to do that.
-  int value = consteval(inits->value);
-  switch (ty->size) {
-    case 4:
-      emit("  .long %d\n", value);
-      break;
-    case 8:
-      emit("  .quad %d\n", value);
-      break;
-    default:
-      ice_at(NULL, "unknown type size for global initializer");
+static void
+codegen_initializer(initializer* init, type* ty)
+{
+  if (init->kind == INITIALIZER_AGGREGATE) {
+    codegen_aggregate_initializer(init->u.initializers, ty);
+  } else {
+    codegen_scalar_initializer(init->u.value, ty);
   }
 }
 
