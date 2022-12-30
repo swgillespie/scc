@@ -44,8 +44,10 @@ stage2() {
     gcc -c -o $STAGE_2/parse.o $STAGE_2/parse.s
     $scc codegen.c -o $STAGE_2/codegen.s
     gcc -c -o $STAGE_2/codegen.o $STAGE_2/codegen.s
-    cp $STAGE_1/tokenize.o $STAGE_2/tokenize.o
-    cp $STAGE_1/type.o $STAGE_2/type.o
+    $scc tokenize.c -o $STAGE_2/tokenize.s
+    gcc -c -o $STAGE_2/tokenize.o $STAGE_2/tokenize.s
+    $scc type.c -o $STAGE_2/type.s
+    gcc -c -o $STAGE_2/type.o $STAGE_2/type.s
     gcc -static -o $STAGE_2/scc \
         $STAGE_2/main.o \
         $STAGE_2/codegen.o \
@@ -63,8 +65,10 @@ stage3() {
     gcc -c -o $STAGE_3/parse.o $STAGE_3/parse.s
     $scc codegen.c -o $STAGE_3/codegen.s
     gcc -c -o $STAGE_3/codegen.o $STAGE_3/codegen.s
-    cp $STAGE_2/tokenize.o $STAGE_3/tokenize.o
-    cp $STAGE_2/type.o $STAGE_3/type.o
+    $scc tokenize.c -o $STAGE_3/tokenize.s
+    gcc -c -o $STAGE_3/tokenize.o $STAGE_3/tokenize.s
+    $scc type.c -o $STAGE_3/type.s
+    gcc -c -o $STAGE_3/type.o $STAGE_3/type.s
     gcc -static -o $STAGE_3/scc \
         $STAGE_3/main.o \
         $STAGE_3/codegen.o \

@@ -1,14 +1,16 @@
 #include "scc.h"
 
-type* ty_int = &(type){ .kind = TYPE_INT, .base = NULL, .size = 4, .align = 4 };
-type* ty_long =
-  &(type){ .kind = TYPE_INT, .base = NULL, .size = 8, .align = 8 };
-type* ty_void =
-  &(type){ .kind = TYPE_VOID, .base = NULL, .size = 0, .align = 1 };
-type* ty_char =
-  &(type){ .kind = TYPE_CHAR, .base = NULL, .size = 1, .align = 1 };
-type* ty_bool =
-  &(type){ .kind = TYPE_BOOL, .base = NULL, .size = 1, .align = 1 };
+type ty_int_struct = { TYPE_INT, NULL, 4, 4, NULL, NULL, { 0 } };
+type ty_long_struct = { TYPE_INT, NULL, 8, 8, NULL, NULL, { 0 } };
+type ty_void_struct = { TYPE_VOID, NULL, 0, 1, NULL, NULL, { 0 } };
+type ty_char_struct = { TYPE_CHAR, NULL, 1, 1, NULL, NULL, { 0 } };
+type ty_bool_struct = { TYPE_BOOL, NULL, 1, 1, NULL, NULL, { 0 } };
+
+type* ty_int = &ty_int_struct;
+type* ty_long = &ty_long_struct;
+type* ty_void = &ty_void_struct;
+type* ty_char = &ty_char_struct;
+type* ty_bool = &ty_bool_struct;
 
 type*
 make_pointer_type(type* base)
