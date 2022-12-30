@@ -888,6 +888,15 @@ codegen_scalar_initializer(node* value, type* ty)
   // evaluation system here where we'd evaluate each expression.
   //
   // We're not a real compiler, and we're not going to do that.
+  if (value->kind == NODE_ADDROF &&
+      value->u.addrof_value->kind == NODE_SYMBOL_REF) {
+    // One of the dumb hacks we do here: the addrof operator of a symbol ref
+    // can be replaced with the address of the symbol ref.
+    symbol* sym = value->u.addrof_value->u.symbol_ref;
+    emit("  .quad %s\n", sym->name);
+    return;
+  }
+
   int scalar_value = consteval(value);
   switch (ty->size) {
     case 4:
