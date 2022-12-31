@@ -148,6 +148,9 @@ abort();
  * tokenize.c - C source tokenizer
  */
 
+extern char* source_name;
+extern char* source;
+
 typedef enum
 {
   TOKEN_ERROR,
@@ -699,39 +702,11 @@ emit(char* fmt, ...);
 
 #endif
 
-/*
- * builtins.c - Management for builtin functions
- */
-
-#ifndef SCC_SELFHOST
-
-typedef struct builtin_function
-{
-  /**
-   * The name of this builtin.
-   */
-  char* name;
-
-  /**
-   * The type of this builtin.
-   */
-  type* (*ty)(void);
-
-  /**
-   * Generates code for this builtin given a list of arguments.
-   */
-  void (*codegen)(node*);
-} builtin_function;
-
-builtin_function*
-builtin_lookup(char* name);
-
-#endif /* !SCC_SELFHOST */
-
 /**
  * Options
  */
 extern FILE* output_file;
+extern int enable_warnings;
 
 /**
  * Miscellaneous utility routines
@@ -757,10 +732,5 @@ gen_label_name(char* prefix, int num);
       ice_at((tok), fmt, ##__VA_ARGS__);                                       \
     }                                                                          \
   } while (0)
-
-/**
- * Command-line options
- */
-extern int enable_warnings;
 
 #endif /* __SCC_H__ */

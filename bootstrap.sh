@@ -27,12 +27,14 @@ stage1() {
     gcc $cflags -c -o $STAGE_1/parse.o parse.c
     gcc $cflags -c -o $STAGE_1/tokenize.o tokenize.c
     gcc $cflags -c -o $STAGE_1/type.o type.c
+    gcc $cflags -c -o $STAGE_1/diag.o diag.c
     gcc -static -o $STAGE_1/scc \
         $STAGE_1/main.o \
         $STAGE_1/codegen.o \
         $STAGE_1/parse.o \
         $STAGE_1/tokenize.o \
-        $STAGE_1/type.o
+        $STAGE_1/type.o \
+        $STAGE_1/diag.o
 }
 
 stage2() {
@@ -48,12 +50,14 @@ stage2() {
     gcc -c -o $STAGE_2/tokenize.o $STAGE_2/tokenize.s
     $scc type.c -o $STAGE_2/type.s
     gcc -c -o $STAGE_2/type.o $STAGE_2/type.s
+    cp $STAGE_1/diag.o $STAGE_2/diag.o 
     gcc -static -o $STAGE_2/scc \
         $STAGE_2/main.o \
         $STAGE_2/codegen.o \
         $STAGE_2/parse.o \
         $STAGE_2/tokenize.o \
-        $STAGE_2/type.o
+        $STAGE_2/type.o \
+        $STAGE_2/diag.o
 }
 
 stage3() {
@@ -69,12 +73,14 @@ stage3() {
     gcc -c -o $STAGE_3/tokenize.o $STAGE_3/tokenize.s
     $scc type.c -o $STAGE_3/type.s
     gcc -c -o $STAGE_3/type.o $STAGE_3/type.s
+    cp $STAGE_2/diag.o $STAGE_3/diag.o 
     gcc -static -o $STAGE_3/scc \
         $STAGE_3/main.o \
         $STAGE_3/codegen.o \
         $STAGE_3/parse.o \
         $STAGE_3/tokenize.o \
-        $STAGE_3/type.o
+        $STAGE_3/type.o \
+        $STAGE_3/diag.o
     diff $STAGE_2/scc $STAGE_3/scc
 }
 
